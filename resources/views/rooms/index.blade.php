@@ -1,0 +1,105 @@
+@extends('layouts.app')
+
+@section('title', 'Rooms & Suites')
+
+@section('content')
+    <section class="bg-onyx pb-16 pt-36 text-background">
+        <div class="mx-auto max-w-container px-5 md:px-8">
+            <p class="eyebrow text-gold">Curated accommodations</p>
+            <h1 class="mt-4 font-display text-5xl font-medium tracking-tight md:text-6xl">Rooms &amp; Suites</h1>
+            <p class="mt-5 max-w-2xl text-base font-light leading-relaxed text-background/70">
+                A considered collection of well-appointed rooms, each finished with a calm palette,
+                premium fabrics, and the essentials of a restful stay.
+            </p>
+        </div>
+    </section>
+
+    <section class="mx-auto max-w-container px-5 py-16 md:px-8 md:py-20">
+        @if ($rooms->count() === 0)
+            <div class="rounded-2xl border border-line/70 bg-surface py-20 text-center">
+                <span class="material-symbols-outlined text-5xl text-stone/40">hotel_class</span>
+                <p class="mt-4 font-display text-2xl text-ink">Belum ada kamar yang tersedia</p>
+                <p class="mt-2 text-sm text-stone">Silakan cek kembali nanti.</p>
+            </div>
+        @else
+            <div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+                @foreach ($rooms as $room)
+                    @php
+                        $roomImages = is_string($room->images) ? json_decode($room->images, true) : $room->images;
+                        $roomImages = (!empty($roomImages) && is_array($roomImages) && count($roomImages) > 0) ? $roomImages : [null];
+                    @endphp
+
+                    <div
+                        class="group flex flex-col overflow-hidden rounded-2xl border border-line/70 bg-surface shadow-card transition-shadow hover:shadow-cardhover">
+                        <a href="{{ route('rooms.show', $room->id) }}" class="relative block h-60 overflow-hidden">
+                            <div class="hide-scrollbar flex h-full w-full snap-x snap-mandatory overflow-x-auto">
+                                @foreach ($roomImages as $img)
+                                    <div class="h-full w-full flex-shrink-0 snap-center">
+                                        <img class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                            src="{{ $img ? \Illuminate\Support\Facades\Storage::url($img) : 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1170&auto=format&fit=crop' }}"
+                                            alt="{{ $room->name }}" />
+                                    </div>
+                                @endforeach
+                            </div>
+                            <span
+                                class="absolute right-4 top-4 rounded-full bg-background/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink backdrop-blur">
+                                {{ $room->total_inventory }} units
+                            </span>
+                        </a>
+
+                        <div class="flex flex-1 flex-col p-6">
+                            <a href="{{ route('rooms.show', $room->id) }}">
+                                <h2 class="font-display text-2xl font-medium text-ink transition-colors hover:text-gold-soft">{{ $room->name }}</h2>
+                            </a>
+                            <p class="mt-3 line-clamp-3 text-sm leading-relaxed text-stone">{{ $room->description }}</p>
+
+                            <span class="mt-6 flex items-center gap-1.5 text-sm text-stone">
+                                <span class="material-symbols-outlined text-[18px] text-gold">person</span>
+                                Up to {{ $room->max_guests }} guests
+                            </span>
+
+                            <div class="mt-5 flex items-end justify-between border-t border-line/70 pt-5">
+                                <div>
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-soft">From</p>
+                                    <p class="font-display text-xl text-ink">
+                                        Rp {{ number_format($room->base_price, 0, ',', '.') }}
+                                        <span class="font-body text-xs font-normal text-stone">/ night</span>
+                                    </p>
+                                </div>
+                                <a href="{{ route('rooms.show', $room->id) }}"
+                                    class="inline-flex items-center gap-1 text-sm font-semibold text-ink transition-colors hover:text-gold-soft">
+                                    Details <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+                                </a>
+                            </div>
+
+                            <form action="{{ route('booking.room.checkout') }}" method="POST" class="mt-5 space-y-3">
+                                @csrf
+                                <input type="hidden" name="room_type_id" value="{{ $room->id }}">
+                                <input type="hidden" name="number_of_rooms" value="1">
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Check-in</label>
+                                        <input type="date" name="check_in_date" required
+                                            class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-gold" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Check-out</label>
+                                        <input type="date" name="check_out_date" required
+                                            class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-gold" />
+                                    </div>
+                                </div>
+                                @auth
+                                    <button type="submit"
+                                        class="w-full rounded-full bg-ink px-6 py-3 text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Book this room</button>
+                                @else
+                                    <a href="{{ route('login') }}"
+                                        class="block w-full rounded-full bg-ink px-6 py-3 text-center text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Sign in to book</a>
+                                @endauth
+                            </form>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </section>
+@endsection

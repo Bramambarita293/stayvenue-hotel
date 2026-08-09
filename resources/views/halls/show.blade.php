@@ -1,0 +1,125 @@
+@extends('layouts.app')
+
+@section('title', $hall->name)
+
+@section('content')
+    @php
+        $hallImages = is_string($hall->images) ? json_decode($hall->images, true) : $hall->images;
+        $hallImages = (!empty($hallImages) && is_array($hallImages) && count($hallImages) > 0) ? $hallImages : [null];
+    @endphp
+
+    <section class="mx-auto max-w-container px-5 pt-28 md:px-8">
+        <nav class="flex items-center gap-2 text-xs text-stone">
+            <a href="/" class="transition-colors hover:text-ink">Home</a>
+            <span>/</span>
+            <a href="{{ route('halls.index') }}" class="transition-colors hover:text-ink">Venues</a>
+            <span>/</span>
+            <span class="font-semibold text-ink">{{ $hall->name }}</span>
+        </nav>
+
+        <!-- Gallery -->
+        <div class="mt-6 grid h-[380px] grid-cols-1 gap-2 overflow-hidden rounded-2xl md:h-[520px] md:grid-cols-4 md:grid-rows-2">
+            <div class="h-full w-full md:col-span-2 md:row-span-2">
+                <img class="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+                    src="{{ $hallImages[0] ? \Illuminate\Support\Facades\Storage::url($hallImages[0]) : 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=1170&auto=format&fit=crop' }}"
+                    alt="{{ $hall->name }}" />
+            </div>
+            @for ($i = 1; $i <= 4; $i++)
+                @if (isset($hallImages[$i]) && $hallImages[$i])
+                    <div class="hidden h-full w-full md:block">
+                        <img class="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+                            src="{{ \Illuminate\Support\Facades\Storage::url($hallImages[$i]) }}"
+                            alt="{{ $hall->name }}" />
+                    </div>
+                @endif
+            @endfor
+        </div>
+    </section>
+
+    <section class="mx-auto max-w-container px-5 py-14 md:px-8">
+        <div class="grid grid-cols-1 gap-12 lg:grid-cols-3">
+            <!-- Details -->
+            <div class="lg:col-span-2">
+                <p class="eyebrow">Unforgettable gatherings</p>
+                <h1 class="mt-3 font-display text-4xl font-medium tracking-tight text-ink md:text-5xl">{{ $hall->name }}</h1>
+
+                <div class="mt-6 flex flex-wrap gap-x-8 gap-y-3 border-b border-line/70 pb-8 text-sm text-stone">
+                    <span class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[20px] text-gold">groups</span>
+                        Up to {{ $hall->capacity_pax }} pax
+                    </span>
+                    <span class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[20px] text-gold">payments</span>
+                        Rp {{ number_format($hall->base_rental_price, 0, ',', '.') }} / session
+                    </span>
+                </div>
+
+                <h2 class="mt-8 font-display text-2xl font-medium text-ink">About this venue</h2>
+                <p class="mt-4 max-w-2xl text-sm leading-relaxed text-stone">{{ $hall->description }}</p>
+
+                @if (isset($sessions) && count($sessions) > 0)
+                    <h2 class="mt-10 font-display text-2xl font-medium text-ink">Available sessions</h2>
+                    <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        @foreach ($sessions as $session)
+                            <div class="flex items-center justify-between rounded-xl border border-line/70 bg-surface-muted px-5 py-4">
+                                <div>
+                                    <p class="text-sm font-semibold text-ink">{{ $session->session_name }}</p>
+                                    <p class="mt-1 text-xs text-stone">
+                                        {{ \Carbon\Carbon::parse($session->start_time)->format('H:i') }} –
+                                        {{ \Carbon\Carbon::parse($session->end_time)->format('H:i') }} WIB
+                                    </p>
+                                </div>
+                                <span class="material-symbols-outlined text-gold">schedule</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+
+            <!-- Reservation card -->
+            <div class="lg:col-span-1">
+                <div class="rounded-2xl border border-line/70 bg-surface p-7 shadow-card lg:sticky lg:top-28">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-soft">Base rental</p>
+                    <p class="mt-1 font-display text-3xl font-semibold text-ink">
+                        Rp {{ number_format($hall->base_rental_price, 0, ',', '.') }}
+                        <span class="font-body text-sm font-normal text-stone">/ session</span>
+                    </p>
+
+                    <form action="{{ route('booking.hall.checkout') }}" method="POST" class="mt-7 space-y-4">
+                        @csrf
+                        <input type="hidden" name="hall_id" value="{{ $hall->id }}">
+                        <div>
+                            <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Tanggal acara</label>
+                            <input type="date" name="event_date" required
+                                class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Sesi waktu</label>
+                            <select name="session_id" required
+                                class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold">
+                                @foreach ($sessions as $session)
+                                    <option value="{{ $session->id }}">{{ $session->session_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Jenis acara</label>
+                            <input type="text" name="event_type" placeholder="Pernikahan / Wisuda / Rapat corporate" required
+                                class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
+                        </div>
+
+                        @auth
+                            <button type="submit"
+                                class="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Sewa gedung ini</button>
+                        @else
+                            <a href="{{ route('login') }}"
+                                class="block w-full rounded-full bg-ink px-6 py-3.5 text-center text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Sign in to book</a>
+                        @endauth
+                    </form>
+
+                    <p class="mt-4 text-center text-xs text-stone">Our event team will contact you to confirm final arrangements.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+@endsection
