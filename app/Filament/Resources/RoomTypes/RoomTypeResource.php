@@ -13,7 +13,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-USE UnitEnum;
+use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class RoomTypeResource extends Resource
 {
@@ -22,6 +23,14 @@ class RoomTypeResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHomeModern;
     protected static string|UnitEnum|null $navigationGroup = 'Manajemen Kamar';
     protected static ?string $recordTitleAttribute = 'name';
+
+    public static function getEloquentQuery(): Builder
+    {
+        // Kapasitas live per tipe kamar (room non-MAINTENANCE), sekali query
+        // untuk seluruh tabel — menghindari N+1 dan mendukung sorting.
+        return parent::getEloquentQuery()
+            ->withCount(['rooms' => fn (Builder $query) => $query->where('status', '!=', 'MAINTENANCE')]);
+    }
 
     public static function form(Schema $schema): Schema
     {

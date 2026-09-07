@@ -19,9 +19,9 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Notifications\Notification;
 
 use App\Models\Room;
-use App\Filament\Resources\RoomResource\Pages\ListRooms;
-use App\Filament\Resources\RoomResource\Pages\CreateRoom;
-use App\Filament\Resources\RoomResource\Pages\EditRoom;
+use App\Filament\Resources\Rooms\Pages\ListRooms;
+use App\Filament\Resources\Rooms\Pages\CreateRoom;
+use App\Filament\Resources\Rooms\Pages\EditRoom;
 
 class RoomResource extends Resource
 {

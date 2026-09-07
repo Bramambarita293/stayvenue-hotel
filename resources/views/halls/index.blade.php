@@ -32,7 +32,7 @@
                     <div class="flex flex-col gap-8 overflow-hidden rounded-2xl border border-line/70 bg-surface shadow-card md:flex-row {{ $reverse ? 'md:flex-row-reverse' : '' }}">
                         <div class="relative h-64 w-full overflow-hidden md:h-auto md:w-1/2">
                             <img class="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
-                                src="{{ $firstImage }}" alt="{{ $hall->name }}" />
+                                src="{{ $firstImage }}" alt="{{ $hall->name }}" loading="lazy" decoding="async" />
                         </div>
 
                         <div class="flex flex-1 flex-col justify-center p-7 md:p-10">

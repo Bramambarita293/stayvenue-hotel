@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\RoomResource\Pages;
+namespace App\Filament\Resources\Rooms\Pages;
 
 use App\Filament\Resources\Rooms\RoomResource;
 use Filament\Actions;

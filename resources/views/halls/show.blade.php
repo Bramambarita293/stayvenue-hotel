@@ -22,14 +22,14 @@
             <div class="h-full w-full md:col-span-2 md:row-span-2">
                 <img class="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
                     src="{{ $hallImages[0] ? \Illuminate\Support\Facades\Storage::url($hallImages[0]) : 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=1170&auto=format&fit=crop' }}"
-                    alt="{{ $hall->name }}" />
+                    alt="{{ $hall->name }}" fetchpriority="high" decoding="async" />
             </div>
             @for ($i = 1; $i <= 4; $i++)
                 @if (isset($hallImages[$i]) && $hallImages[$i])
                     <div class="hidden h-full w-full md:block">
                         <img class="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
                             src="{{ \Illuminate\Support\Facades\Storage::url($hallImages[$i]) }}"
-                            alt="{{ $hall->name }}" />
+                            alt="{{ $hall->name }}" loading="lazy" decoding="async" />
                     </div>
                 @endif
             @endfor
@@ -85,37 +85,56 @@
                         <span class="font-body text-sm font-normal text-stone">/ session</span>
                     </p>
 
-                    <form action="{{ route('booking.hall.checkout') }}" method="POST" class="mt-7 space-y-4">
-                        @csrf
-                        <input type="hidden" name="hall_id" value="{{ $hall->id }}">
-                        <div>
-                            <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Tanggal acara</label>
-                            <input type="date" name="event_date" required
-                                class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Sesi waktu</label>
-                            <select name="session_id" required
-                                class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold">
-                                @foreach ($sessions as $session)
-                                    <option value="{{ $session->id }}">{{ $session->session_name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Jenis acara</label>
-                            <input type="text" name="event_type" placeholder="Pernikahan / Wisuda / Rapat corporate" required
-                                class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
-                        </div>
+                    @include('partials.booking-error')
 
-                        @auth
-                            <button type="submit"
-                                class="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Sewa gedung ini</button>
-                        @else
-                            <a href="{{ route('login') }}"
-                                class="block w-full rounded-full bg-ink px-6 py-3.5 text-center text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Sign in to book</a>
-                        @endauth
-                    </form>
+                    @if (!isset($sessions) || count($sessions) === 0)
+                        <div class="mt-7 rounded-xl border border-line/70 bg-surface-muted p-5 text-center">
+                            <span class="material-symbols-outlined text-4xl text-stone/40">meeting_room</span>
+                            <p class="mt-2 font-display text-xl text-ink">Belum ada sesi tersedia</p>
+                            <p class="mt-1 text-sm text-stone">Silakan cek kembali nanti.</p>
+                            <a href="{{ route('halls.index') }}"
+                                class="mt-4 inline-block rounded-full bg-ink px-6 py-3 text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Lihat gedung lain</a>
+                        </div>
+                    @else
+                        <form action="{{ route('booking.hall.checkout') }}" method="POST" class="mt-7 space-y-4"
+                            data-availability="hall"
+                            data-cta-url="{{ route('halls.index') }}"
+                            data-cta-label="Lihat gedung lain">
+                            @csrf
+                            <input type="hidden" name="hall_id" value="{{ $hall->id }}">
+                            <div>
+                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Tanggal acara</label>
+                                <input type="date" name="event_date" required min="{{ now()->toDateString() }}"
+                                    value="{{ old('event_date') }}"
+                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Sesi waktu</label>
+                                <select name="session_id" required
+                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold">
+                                    @foreach ($sessions as $session)
+                                        <option value="{{ $session->id }}" @selected(old('session_id') == $session->id)>{{ $session->session_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Jenis acara</label>
+                                <input type="text" name="event_type" placeholder="Pernikahan / Wisuda / Rapat corporate" required maxlength="100"
+                                    value="{{ old('event_type') }}"
+                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
+                            </div>
+
+                            @include('partials.availability-status', ['ctaUrl' => route('halls.index'), 'ctaLabel' => 'Lihat gedung lain'])
+
+                            @auth
+                                <button type="submit" data-availability-submit
+                                    class="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Sewa gedung ini</button>
+                            @else
+                                <a href="{{ route('login') }}"
+                                    class="block w-full rounded-full bg-ink px-6 py-3.5 text-center text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Sign in to book</a>
+                            @endauth
+                        </form>
+                    @endif
 
                     <p class="mt-4 text-center text-xs text-stone">Our event team will contact you to confirm final arrangements.</p>
                 </div>
@@ -123,3 +142,7 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('js/availability.js') }}" defer></script>
+@endpush

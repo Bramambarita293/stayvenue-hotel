@@ -61,7 +61,7 @@
                                 </td>
 
                                 <td class="p-5">
-                                    @if (in_array($res->status, ['CONFIRMED', 'COMPLETED']))
+                                    @if (in_array($res->status, ['CONFIRMED', 'COMPLETED', 'CHECKED_IN']))
                                         <span class="inline-flex items-center gap-1 rounded-full bg-successful/10 px-3 py-1 text-xs font-semibold text-successful">
                                             <span class="material-symbols-outlined text-[14px]">check_circle</span> LUNAS
                                         </span>
@@ -82,7 +82,7 @@
                                             class="inline-block rounded-full bg-ink px-5 py-2 text-xs font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">
                                             Bayar sekarang
                                         </a>
-                                    @elseif (in_array($res->status, ['CONFIRMED', 'COMPLETED']))
+                                    @elseif (in_array($res->status, ['CONFIRMED', 'COMPLETED', 'CHECKED_IN']))
                                         <div class="flex items-center justify-center gap-2">
                                             <a href="{{ route('voucher.show', $res->reservation_code) }}"
                                                 class="rounded-full border border-line bg-surface px-4 py-2 text-xs font-semibold text-ink transition-colors hover:border-ink">Lihat</a>

@@ -13,8 +13,7 @@ class HallAvailabilitiesTable
             ->columns([
                 TextColumn::make('hall.name')
                     ->label('Gedung')
-                    ->searchable()
-                    ->bold(),
+                    ->searchable(),
 
                 TextColumn::make('session.session_name')
                     ->label('Sesi Waktu'),

@@ -16,4 +16,9 @@ class ListReservations extends ListRecords
             CreateAction::make(),
         ];
     }
+
+    protected function getTableQuery(): ?\Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getTableQuery()?->with(['roomBooking.roomType', 'hallBooking.hall', 'payments']);
+    }
 }

@@ -9,6 +9,9 @@
                 class="text-sm font-medium text-stone transition-colors hover:text-ink">Rooms</a>
             <a href="{{ route('halls.index') }}"
                 class="text-sm font-medium text-stone transition-colors hover:text-ink">Venues</a>
+            <a href="{{ route('contact') }}"
+                @if (request()->routeIs('contact')) aria-current="page" @endif
+                class="text-sm font-medium transition-colors {{ request()->routeIs('contact') ? 'text-ink' : 'text-stone hover:text-ink' }}">Contact</a>
             @auth
                 <a href="{{ route('user.reservations') }}"
                     class="text-sm font-medium text-stone transition-colors hover:text-ink">Reservations</a>
@@ -39,6 +42,7 @@
         <nav class="flex flex-col gap-4">
             <a href="{{ route('rooms.index') }}" class="text-sm font-medium text-ink">Rooms</a>
             <a href="{{ route('halls.index') }}" class="text-sm font-medium text-ink">Venues</a>
+            <a href="{{ route('contact') }}" class="text-sm font-medium text-ink">Contact</a>
             @auth
                 <a href="{{ route('user.reservations') }}" class="text-sm font-medium text-ink">Reservations</a>
                 <form action="{{ route('logout') }}" method="POST">

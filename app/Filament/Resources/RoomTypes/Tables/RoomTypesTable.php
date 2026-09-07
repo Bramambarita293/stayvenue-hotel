@@ -31,7 +31,7 @@ class RoomTypesTable
                     ->money('IDR')
                     ->sortable(),
 
-                TextColumn::make('total_inventory')
+                TextColumn::make('rooms_count')
                     ->label('Total Unit')
                     ->sortable(),
 

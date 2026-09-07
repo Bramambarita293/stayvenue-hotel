@@ -7,7 +7,25 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RoomBooking extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'reservation_id',
+        'room_type_id',
+        'room_id',
+        'check_in_date',
+        'check_out_date',
+        'number_of_rooms',
+        'assigned_room_number',
+        'special_requests',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'check_in_date' => 'date',
+            'check_out_date' => 'date',
+            'number_of_rooms' => 'integer',
+        ];
+    }
 
     public function reservation(): BelongsTo
     {

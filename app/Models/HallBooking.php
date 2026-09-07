@@ -7,7 +7,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HallBooking extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'reservation_id',
+        'hall_id',
+        'event_package_id',
+        'session_id',
+        'event_date',
+        'event_type',
+        'vendor_setup_time',
+        'special_notes',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'event_date' => 'date',
+            'vendor_setup_time' => 'datetime',
+        ];
+    }
 
     public function reservation(): BelongsTo
     {

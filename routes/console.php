@@ -9,3 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('midtrans:check-pending')->everyThirtyMinutes();
+
+// Sapu reservasi yang masa inap/acaranya lewat kemarin (01:00 WIB, trafik sepi).
+Schedule::command('stays:auto-complete')->dailyAt('01:00');

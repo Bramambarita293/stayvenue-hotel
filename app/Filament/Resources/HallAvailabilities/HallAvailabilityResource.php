@@ -23,7 +23,7 @@ class HallAvailabilityResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Manajemen Gedung & Event';
 
-    protected static ?string $navigationLabel = 'Kalender & Ketersediaan';
+    protected static ?string $navigationLabel = 'Hall Availabilities';
 
     public static function form(Schema $schema): Schema
     {

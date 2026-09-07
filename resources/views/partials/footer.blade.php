@@ -14,6 +14,7 @@
                 <ul class="mt-4 space-y-3 text-sm text-background/70">
                     <li><a href="{{ route('rooms.index') }}" class="transition-colors hover:text-gold">Rooms &amp; Suites</a></li>
                     <li><a href="{{ route('halls.index') }}" class="transition-colors hover:text-gold">Event Venues</a></li>
+                    <li><a href="{{ route('contact') }}" class="transition-colors hover:text-gold">Contact &amp; Location</a></li>
                     @auth
                         <li><a href="{{ route('user.reservations') }}" class="transition-colors hover:text-gold">My Reservations</a></li>
                     @endauth

@@ -13,14 +13,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->preventRequestForgery(except: [
-            'api/midtrans-callback',
-        ]);
-    })
-    ->withMiddleware(function (Middleware $middleware) {
+        // Webhook Midtrans datang dari luar tanpa token CSRF.
         $middleware->validateCsrfTokens(except: [
             'api/midtrans/notification',
             'midtrans/notification',
+        ]);
+
+        $middleware->alias([
+            'is_admin' => \App\Http\Middleware\IsAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

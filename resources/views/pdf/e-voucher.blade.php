@@ -6,13 +6,13 @@
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
-            color: #333;
+            color: #101828;
             margin: 0;
             padding: 20px;
             font-size: 13px;
         }
         .header {
-            border-bottom: 2px solid #1a365d;
+            border-bottom: 2px solid #101828;
             padding-bottom: 15px;
             margin-bottom: 20px;
         }
@@ -22,14 +22,17 @@
         .hotel-name {
             font-size: 22px;
             font-weight: bold;
-            color: #1a365d;
+            color: #101828;
             text-transform: uppercase;
+            letter-spacing: 0.08em;
         }
         .voucher-title {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
-            color: #742a2a;
+            color: #1E3A8A;
             text-align: right;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
         }
         .badge {
             display: inline-block;
@@ -37,17 +40,20 @@
             font-size: 11px;
             font-weight: bold;
             color: #fff;
-            background-color: #2b6cb0;
+            background-color: #101828;
             border-radius: 4px;
+            letter-spacing: 0.06em;
         }
         .section-title {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
-            background-color: #f7fafc;
+            color: #101828;
+            background-color: #EDF1F7;
             padding: 6px 10px;
-            border-left: 4px solid #2b6cb0;
+            border-left: 4px solid #1E3A8A;
             margin-top: 20px;
             margin-bottom: 10px;
+            letter-spacing: 0.06em;
         }
         .info-table {
             width: 100%;
@@ -57,10 +63,11 @@
         .info-table td {
             padding: 6px 4px;
             vertical-align: top;
+            border-bottom: 1px solid #E2E8F0;
         }
         .info-table .label {
             width: 30%;
-            color: #718096;
+            color: #5B6472;
             font-weight: 500;
         }
         .info-table .value {
@@ -70,8 +77,8 @@
         .qr-container {
             text-align: center;
             padding: 10px;
-            background: #fafafa;
-            border: 1px dashed #cbd5e0;
+            background: #F7F9FC;
+            border: 1px dashed #93B0E8;
             border-radius: 6px;
         }
         .qr-container img {
@@ -80,10 +87,10 @@
         }
         .footer {
             margin-top: 40px;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid #E2E8F0;
             padding-top: 10px;
             font-size: 11px;
-            color: #a0aec0;
+            color: #8A94A6;
             text-align: center;
         }
     </style>
@@ -96,7 +103,7 @@
             <tr>
                 <td>
                     <div class="hotel-name">STAY VENUE HOTEL</div>
-                    <div style="color: #4a5568; font-size: 11px;">Jl. Raya Utama No. 1, Menteng, Jakarta Pusat 10310 • Telp: +62 21 555-0199</div>
+                    <div style="color: #5B6472; font-size: 11px;">Jl. Raya Utama No. 1, Menteng, Jakarta Pusat 10310 • Telp: +62 21 555-0199</div>
                 </td>
                 <td style="text-align: right;">
                     <div class="voucher-title">E-VOUCHER CONFIRMATION</div>
@@ -166,7 +173,7 @@
                     @endif
                     <tr>
                         <td class="label">Total Pembayaran:</td>
-                        <td class="value" style="color: #2b6cb0; font-size: 15px;">Rp {{ number_format($reservation->total_amount, 0, ',', '.') }}</td>
+                        <td class="value" style="color: #172E6E; font-size: 15px;">Rp {{ number_format($reservation->total_amount, 0, ',', '.') }}</td>
                     </tr>
                     <tr>
                         <td class="label">Status:</td>
@@ -178,9 +185,9 @@
             <!-- Right Column: QR Code Check-in -->
             <td style="width: 35%; vertical-align: top; padding-left: 20px;">
                 <div class="qr-container">
-                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 8px; color: #4a5568;">SCAN UNTUK CHECK-IN</div>
+                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 8px; color: #5B6472;">SCAN UNTUK CHECK-IN</div>
                     <img src="{{ $qrCode }}" alt="QR Code Check-in">
-                    <div style="font-size: 10px; color: #718096; margin-top: 8px;">Tunjukkan QR Code ini ke resepsionis saat kedatangan.</div>
+                    <div style="font-size: 10px; color: #8A94A6; margin-top: 8px;">Tunjukkan QR Code ini ke resepsionis saat kedatangan.</div>
                 </div>
             </td>
         </tr>

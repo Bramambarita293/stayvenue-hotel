@@ -11,10 +11,10 @@
                 background: #fff !important;
             }
             #action-bar { display: none; }
-            #ticket { box-shadow: none !important; border: 1px solid #E7E2D9 !important; }
+            #ticket { box-shadow: none !important; border: 1px solid #D5DCE8 !important; }
         }
         .gold-line {
-            background: linear-gradient(90deg, transparent, #C9A24B 15%, #E8D3A2 50%, #C9A24B 85%, transparent);
+            background: linear-gradient(90deg, transparent, #1E3A8A 15%, #93B0E8 50%, #1E3A8A 85%, transparent);
         }
     </style>
 @endpush
@@ -111,7 +111,7 @@
                             <p class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-soft">
                                 <span class="material-symbols-outlined text-[18px]">schedule</span> Sesi acara
                             </p>
-                            <p class="mt-1.5 font-semibold text-ink">{{ $reservation->hallBooking->session->name ?? 'Standard Session' }}</p>
+                            <p class="mt-1.5 font-semibold text-ink">{{ $reservation->hallBooking->session->session_name ?? 'Standard Session' }}</p>
                         </div>
                     </div>
                 @endif
@@ -143,7 +143,7 @@
                     <div class="flex shrink-0 flex-col items-center justify-center border-t border-background/15 p-7 md:w-56 md:border-l md:border-t-0">
                         <div class="mb-3 flex h-24 w-24 items-center justify-center rounded-lg bg-white p-2">
                             <img class="h-full w-full object-contain"
-                                src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ urlencode($reservation->reservation_code) }}"
+                                src="{{ $qrCode }}"
                                 alt="QR Code" />
                         </div>
                         <p class="text-center text-[10px] font-medium uppercase tracking-[0.2em] text-gold">Scan untuk<br />express check-in</p>

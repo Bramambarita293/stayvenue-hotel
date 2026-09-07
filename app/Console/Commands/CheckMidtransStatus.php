@@ -4,13 +4,12 @@ namespace App\Console\Commands;
 
 use App\Models\Reservation;
 use App\Models\Payment;
-use App\Models\HallAvailability;
-use App\Models\RoomDailyInventory;
-use Carbon\Carbon;
-use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Console\Command;
 use Midtrans\Config;
 use Midtrans\Transaction;
+use Throwable;
 
 class CheckMidtransStatus extends Command
 {
@@ -32,62 +31,64 @@ class CheckMidtransStatus extends Command
 
         foreach ($reservations as $reservation) {
             try {
-                // Tembak API Midtrans menggunakan reservation_code
-                $statusResponse = Transaction::status($reservation->reservation_code);
-                $transactionStatus = $statusResponse->transaction_status ?? null;
-
                 $payment = $reservation->payments->where('status', 'PENDING')->first();
 
+                // Query status WAJIB memakai order_id Snap yang persis
+                // (tersimpan di payments.transaction_id), bukan reservation_code.
+                $orderId = $payment?->transaction_id ?: $reservation->reservation_code;
+                $statusResponse = Transaction::status($orderId);
+                $transactionStatus = $statusResponse->transaction_status ?? null;
+
                 if (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
-                    $this->cancelReservationAndReleaseInventory($reservation, $payment, 'EXPIRED');
+                    $this->cancelReservationAndReleaseInventory($reservation, $payment, $transactionStatus === 'expire' ? 'EXPIRED' : 'FAILED');
                     $this->warn("Reservasi {$reservation->reservation_code} dibatalkan (Expired/Cancel).");
                 } elseif (in_array($transactionStatus, ['settlement', 'capture'])) {
-                    $this->confirmReservation($reservation, $payment);
+                    DB::transaction(function () use ($reservation, $payment) {
+                        $fresh = Reservation::whereKey($reservation->id)->lockForUpdate()->first();
+                        if (!$fresh || $fresh->status !== 'PENDING_PAYMENT') {
+                            return;
+                        }
+
+                        $fresh->update(['status' => 'CONFIRMED']);
+                        $payment?->update([
+                            'status'   => 'SUCCESS',
+                            'paid_at'  => now(),
+                        ]);
+                    });
                     $this->info("Reservasi {$reservation->reservation_code} disahkan (Settled).");
                 }
-            } catch (\Exception $e) {
-                // Jika error 404 dari Midtrans (tamu belum pernah klik bayar / snap expired tanpa transaksi)
-                if (str_contains($e->getMessage(), '404')) {
-                    $this->cancelReservationAndReleaseInventory($reservation, null, 'EXPIRED');
+            } catch (Throwable $e) {
+                // 404 = order tidak pernah ada / token expired tanpa transaksi.
+                if ((int) $e->getCode() === 404 || str_contains($e->getMessage(), '404')) {
+                    $this->cancelReservationAndReleaseInventory($reservation, $reservation->payments->where('status', 'PENDING')->first(), 'EXPIRED');
                     $this->warn("Reservasi {$reservation->reservation_code} dibatalkan (404 - Not Found di Midtrans).");
+
+                    continue;
                 }
+
+                Log::error("midtrans:check-pending gagal untuk {$reservation->reservation_code}: {$e->getMessage()}");
             }
         }
     }
 
-    private function confirmReservation($reservation, $payment)
+    private function cancelReservationAndReleaseInventory(Reservation $reservation, ?Payment $payment, string $paymentStatus): void
     {
-        if ($payment) {
-            $payment->update([
-                'status' => 'SUCCESS',
-                'paid_at' => now(),
-            ]);
-        }
-        $reservation->update(['status' => 'CONFIRMED']);
-    }
+        DB::transaction(function () use ($reservation, $payment, $paymentStatus) {
+            // Lock ulang & guard status agar idempoten terhadap webhook
+            // atau polling user yang mungkin memproses reservasi yang sama.
+            $fresh = Reservation::whereKey($reservation->id)->lockForUpdate()->first();
 
-    private function cancelReservationAndReleaseInventory($reservation, $payment, $paymentStatus)
-    {
-        if ($payment) {
-            $payment->update(['status' => $paymentStatus]);
-        }
-        $reservation->update(['status' => 'CANCELLED']);
-
-        // 1. Release Hall
-        if ($reservation->reservation_type === 'HALL') {
-            HallAvailability::where('reservation_id', $reservation->id)->delete();
-        }
-
-        // 2. Release Room Inventory
-        if ($reservation->reservation_type === 'ROOM' && $reservation->roomBooking) {
-            $roomBooking = $reservation->roomBooking;
-            $dates = CarbonPeriod::create($roomBooking->check_in_date, Carbon::parse($roomBooking->check_out_date)->subDay());
-
-            foreach ($dates as $date) {
-                RoomDailyInventory::where('room_type_id', $roomBooking->room_type_id)
-                    ->where('date', $date->format('Y-m-d'))
-                    ->decrement('booked_count', $roomBooking->number_of_rooms);
+            if (!$fresh || $fresh->status !== 'PENDING_PAYMENT') {
+                return;
             }
-        }
+
+            $fresh->update(['status' => 'CANCELLED']);
+
+            if ($payment) {
+                Payment::whereKey($payment->id)->update(['status' => $paymentStatus]);
+            }
+
+            $fresh->releaseStock();
+        });
     }
 }

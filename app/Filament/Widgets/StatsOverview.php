@@ -20,8 +20,10 @@ class StatsOverview extends BaseWidget
         // Jumlah Reservasi Terkonfirmasi 
         $confirmedBookings = Reservation::whereIn('status', ['CONFIRMED', 'COMPLETED'])->count();
 
-        // Reservasi Menunggu Check-in
-        $pendingCheckIns = Reservation::where('status', 'CONFIRMED',)->count();
+        // Reservasi Menunggu Check-in (kamar saja; HALL tidak punya alur check-in)
+        $pendingCheckIns = Reservation::where('status', 'CONFIRMED')
+            ->where('reservation_type', 'ROOM')
+            ->count();
 
         $occupiedRooms = Room::where('status', 'OCCUPIED')->count();
         $cleaningRooms = Room::where('status', 'CLEANING')->count();

@@ -12,7 +12,10 @@ class RoomController extends Controller
      */
     public function index()
     {
-        $rooms = RoomType::all();
+        $rooms = RoomType::query()
+            ->withCount(['rooms' => fn ($query) => $query->where('status', '!=', 'MAINTENANCE')])
+            ->get();
+
         return view('rooms.index', compact('rooms'));
     }
 

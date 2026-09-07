@@ -22,14 +22,14 @@
             <div class="h-full w-full md:col-span-2 md:row-span-2">
                 <img class="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
                     src="{{ $roomImages[0] ? \Illuminate\Support\Facades\Storage::url($roomImages[0]) : 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1170&auto=format&fit=crop' }}"
-                    alt="{{ $roomType->name }}" />
+                    alt="{{ $roomType->name }}" fetchpriority="high" decoding="async" />
             </div>
             @for ($i = 1; $i <= 4; $i++)
                 @if (isset($roomImages[$i]) && $roomImages[$i])
                     <div class="hidden h-full w-full md:block">
                         <img class="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
                             src="{{ \Illuminate\Support\Facades\Storage::url($roomImages[$i]) }}"
-                            alt="{{ $roomType->name }}" />
+                            alt="{{ $roomType->name }}" loading="lazy" decoding="async" />
                     </div>
                 @endif
             @endfor
@@ -92,33 +92,52 @@
                         <span class="font-body text-sm font-normal text-stone">/ night</span>
                     </p>
 
-                    <form action="{{ route('booking.room.checkout') }}" method="POST" class="mt-7 space-y-4">
-                        @csrf
-                        <input type="hidden" name="room_type_id" value="{{ $roomType->id }}">
-                        <div>
-                            <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Check-in</label>
-                            <input type="date" name="check_in_date" required
-                                class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Check-out</label>
-                            <input type="date" name="check_out_date" required
-                                class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Rooms</label>
-                            <input type="number" name="number_of_rooms" value="1" min="1"
-                                class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
-                        </div>
+                    @include('partials.booking-error')
 
-                        @auth
-                            <button type="submit"
-                                class="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Book this room</button>
-                        @else
-                            <a href="{{ route('login') }}"
-                                class="block w-full rounded-full bg-ink px-6 py-3.5 text-center text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Sign in to book</a>
-                        @endauth
-                    </form>
+                    @if (($roomType->total_inventory ?? 0) <= 0)
+                        <div class="mt-7 rounded-xl border border-danger/20 bg-danger/5 p-5 text-center">
+                            <span class="material-symbols-outlined text-4xl text-danger/60">hotel_class</span>
+                            <p class="mt-2 font-display text-xl text-ink">Tipe kamar ini sedang penuh</p>
+                            <p class="mt-1 text-sm text-stone">Silakan pilih tipe lain yang tersedia.</p>
+                            <a href="{{ route('rooms.index') }}"
+                                class="mt-4 inline-block rounded-full bg-ink px-6 py-3 text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Lihat kamar lain</a>
+                        </div>
+                    @else
+                        <form action="{{ route('booking.room.checkout') }}" method="POST" class="mt-7 space-y-4"
+                            data-availability="room"
+                            data-cta-url="{{ route('rooms.index') }}"
+                            data-cta-label="Lihat kamar lain">
+                            @csrf
+                            <input type="hidden" name="room_type_id" value="{{ $roomType->id }}">
+                            <div>
+                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Check-in</label>
+                                <input type="date" name="check_in_date" required min="{{ now()->toDateString() }}"
+                                    value="{{ old('check_in_date') }}"
+                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Check-out</label>
+                                <input type="date" name="check_out_date" required min="{{ now()->toDateString() }}"
+                                    value="{{ old('check_out_date') }}"
+                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Rooms (max 5)</label>
+                                <input type="number" name="number_of_rooms" value="{{ old('number_of_rooms', 1) }}" min="1" max="5"
+                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
+                            </div>
+
+                            @include('partials.availability-status', ['ctaUrl' => route('rooms.index'), 'ctaLabel' => 'Lihat kamar lain'])
+
+                            @auth
+                                <button type="submit" data-availability-submit
+                                    class="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Book this room</button>
+                            @else
+                                <a href="{{ route('login') }}"
+                                    class="block w-full rounded-full bg-ink px-6 py-3.5 text-center text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Sign in to book</a>
+                            @endauth
+                        </form>
+                    @endif
 
                     <p class="mt-4 text-center text-xs text-stone">Free cancellation available up to 48 hours before check-in.</p>
                 </div>
@@ -126,3 +145,7 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+    <script src="{{ asset('js/availability.js') }}" defer></script>
+@endpush

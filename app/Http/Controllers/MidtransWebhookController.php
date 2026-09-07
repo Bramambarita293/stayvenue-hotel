@@ -2,13 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\HallAvailability;
-use App\Models\Payment;
 use App\Models\Reservation;
-use App\Models\Room;
-use App\Models\RoomDailyInventory;
-use Carbon\Carbon;
-use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -19,91 +13,128 @@ class MidtransWebhookController extends Controller
 {
     public function handleNotification(Request $request)
     {
-        Config::$serverKey = config('services.midtrans.server_key');
+        $serverKey = config('services.midtrans.server_key');
+        Config::$serverKey = $serverKey;
         Config::$isProduction = config('services.midtrans.is_production', false);
 
-        Log::info('Midtrans Webhook Payload:', $request->all());
+        $orderId = (string) $request->input('order_id', '');
+        $statusCode = (string) $request->input('status_code', '');
+        $grossAmount = $request->input('gross_amount');
+        $signatureKey = (string) $request->input('signature_key', '');
+
+        // Verifikasi signature eksplisit agar POST palsu tidak bisa spoofing.
+        if ($orderId && $statusCode && $grossAmount !== null) {
+            $expected = hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey);
+            if (! hash_equals($expected, $signatureKey)) {
+                Log::warning('Midtrans webhook signature invalid.', ['order_id' => $orderId]);
+
+                return response()->json(['message' => 'Invalid signature'], 403);
+            }
+        }
+
+        Log::info('Midtrans Webhook received.', ['order_id' => $orderId]);
 
         try {
             $notif = new Notification();
         } catch (\Exception $e) {
             Log::error('Midtrans Notification Error: ' . $e->getMessage());
+
             return response()->json(['message' => 'Invalid Notification'], 400);
         }
 
         $transactionStatus = $notif->transaction_status;
         $type = $notif->payment_type;
         $orderId = $notif->order_id;
-        $fraudStatus = $notif->fraud_status;
+        $fraudStatus = $notif->fraud_status ?? null;
+        $grossAmount = $notif->gross_amount ?? null;
+        $reservationCode = \App\Services\MidtransService::reservationCodeFromOrderId($orderId);
 
-        $parts = explode('-', $orderId);
-        if (count($parts) > 3) {
-            array_pop($parts);
-        }
-        $reservationCode = implode('-', $parts);
+        // Seluruh pembacaan + penulisan status dilakukan dalam SATU transaksi
+        // dengan lockForUpdate agar webhook yang di-retry Midtrans bersifat
+        // idempoten (stok tidak pernah ter-release dua kali).
+        $result = DB::transaction(function () use ($transactionStatus, $type, $fraudStatus, $grossAmount, $reservationCode) {
+            $reservation = Reservation::where('reservation_code', $reservationCode)
+                ->lockForUpdate()
+                ->first();
 
-        $reservation = Reservation::where('reservation_code', $reservationCode)->first();
+            if (!$reservation) {
+                return 'not_found';
+            }
 
-        if (!$reservation) {
-            Log::error("Reservation dengan kode '{$reservationCode}' dari order_id '{$orderId}' tidak ditemukan di database.");
-            return response()->json(['message' => 'Reservation not found'], 404);
-        }
+            if ($reservation->status !== 'PENDING_PAYMENT') {
+                // Sudah CONFIRMED / CANCELLED sebelumnya — jangan proses ulang.
+                Log::info("Webhook diabaikan: reservasi {$reservationCode} sudah berstatus {$reservation->status}.");
 
-        $payment = Payment::where('reservation_id', $reservation->id)->latest()->first();
+                return 'skipped';
+            }
 
-        DB::transaction(function () use ($transactionStatus, $type, $fraudStatus, $reservation, $payment, $orderId) {
-            if ($transactionStatus == 'settlement' || ($transactionStatus == 'capture' && $fraudStatus == 'accept')) {
+            $payment = $reservation->payments()->whereIn('status', ['PENDING', 'CHALLENGE'])->latest()->first();
 
+            // Verifikasi nominal: bandingkan sebagai integer rupiah agar presisi aman.
+            if ($payment && $grossAmount !== null && (int) round((float) $grossAmount) !== (int) round((float) $payment->amount)) {
+                Log::warning("Gross amount mismatch untuk {$reservationCode}: notif={$grossAmount}, db={$payment->amount}.");
+
+                return 'amount_mismatch';
+            }
+
+            if ($transactionStatus === 'settlement' || ($transactionStatus === 'capture' && $fraudStatus === 'accept')) {
                 $reservation->update(['status' => 'CONFIRMED']);
 
-                if ($payment) {
-                    $payment->update([
-                        'transaction_id' => $orderId,
-                        'status'         => 'SUCCESS',
-                        'payment_method' => $type,
-                        'paid_at'        => now(),
-                    ]);
-                }
+                $payment?->update([
+                    'transaction_id' => $orderId,
+                    'status'         => 'SUCCESS',
+                    'payment_method' => $type,
+                    'paid_at'        => now(),
+                ]);
 
                 Log::info("STATUS RESERVASI {$reservation->reservation_code} CONFIRMED.");
-            } elseif (in_array($transactionStatus, ['deny', 'expire', 'cancel'])) {
 
+                return 'confirmed';
+            }
+
+            if ($transactionStatus === 'capture' && $fraudStatus === 'challenge') {
+                // Uang masuk tapi tertahan review fraud — tandai CHALLENGE,
+                // reservasi tetap PENDING_PAYMENT sampai status lanjutan datang.
+                $payment?->update([
+                    'transaction_id' => $orderId,
+                    'status'         => 'CHALLENGE',
+                    'payment_method' => $type,
+                ]);
+
+                Log::warning("Reservasi {$reservation->reservation_code} dalam CHALLENGE (fraud review).");
+
+                return 'challenge';
+            }
+
+            if (in_array($transactionStatus, ['deny', 'expire', 'cancel'])) {
                 $reservation->update(['status' => 'CANCELLED']);
 
-                if ($payment) {
-                    $payment->update(['status' => 'EXPIRED']);
-                }
+                $paymentStatus = $transactionStatus === 'expire' ? 'EXPIRED' : 'FAILED';
+                $payment?->update(['status' => $paymentStatus]);
 
                 if ($reservation->roomBooking && $reservation->roomBooking->room_id) {
-                    $room = Room::find($reservation->roomBooking->room_id);
-                    if ($room && $room->status === 'OCCUPIED') {
-                        $room->update(['status' => 'AVAILABLE']);
-                    }
-
+                    $reservation->roomBooking->room?->update(['status' => 'AVAILABLE']);
                     $reservation->roomBooking->update([
-                        'room_id' => null,
-                        'assigned_room_number' => null
+                        'room_id'              => null,
+                        'assigned_room_number' => null,
                     ]);
                 }
 
-                if ($reservation->reservation_type === 'HALL') {
-                    HallAvailability::where('reservation_id', $reservation->id)->delete();
-                } elseif ($reservation->reservation_type === 'ROOM' && $reservation->roomBooking) {
-                    $roomBooking = $reservation->roomBooking;
-                    $dates = CarbonPeriod::create($roomBooking->check_in_date, Carbon::parse($roomBooking->check_out_date)->subDay());
+                $reservation->releaseStock();
 
-                    foreach ($dates as $date) {
-                        RoomDailyInventory::where('room_type_id', $roomBooking->room_type_id)
-                            ->where('date', $date->format('Y-m-d'))
-                            ->decrement('booked_count', $roomBooking->number_of_rooms);
-                    }
-                }
+                Log::info("RESERVASI {$reservation->reservation_code} DIBATALKAN DAN STOK KEMBALI DI-RELEASE ({$transactionStatus}).");
 
-                Log::info("RESERVASI {$reservation->reservation_code} DIBATALKAN DAN STOK KEMBALI DI-RELEASE.");
+                return 'cancelled';
             }
+
+            return 'ignored';
         });
 
-        return response()->json(['message' => 'Notification processed successfully'], 200)
-            ->header('ngrok-skip-browser-warning', 'true');
+        return match ($result) {
+            'not_found' => response()->json(['message' => 'Reservation not found'], 404),
+            // amount_mismatch/skipped/ignored tetap 200 agar Midtrans tidak retry tak berujung.
+            default => response()->json(['message' => 'Notification processed successfully'], 200)
+                ->header('ngrok-skip-browser-warning', 'true'),
+        };
     }
 }

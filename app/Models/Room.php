@@ -8,7 +8,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Room extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'room_type_id',
+        'room_number',
+        'status',
+    ];
 
     protected $casts = [
         'room_type_id' => 'integer',

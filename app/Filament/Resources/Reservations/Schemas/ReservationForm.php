@@ -45,6 +45,8 @@ class ReservationForm
                             ->options([
                                 'PENDING_PAYMENT' => 'Pending Payment',
                                 'CONFIRMED' => 'Confirmed',
+                                'CHECKED_IN' => 'Checked In',
+                                'CHECKED_OUT' => 'Checked Out',
                                 'CANCELLED' => 'Cancelled',
                                 'COMPLETED' => 'Completed',
                             ])->required(),

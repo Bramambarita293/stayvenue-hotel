@@ -5,6 +5,7 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>@yield('title', $site['long_name']) - {{ $site['long_name'] }}</title>
+    @vite(['resources/css/app.css'])
     @include('partials.tailwind-config')
     @stack('head')
 </head>
@@ -17,6 +18,8 @@
     </main>
 
     @include('partials.footer')
+
+    @include('partials.whatsapp-button')
 
     <script>
         const navToggle = document.getElementById('nav-toggle');
