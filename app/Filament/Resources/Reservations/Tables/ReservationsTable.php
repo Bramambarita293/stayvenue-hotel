@@ -92,6 +92,14 @@ class ReservationsTable
                     ])
                     ->action(function ($record, array $data): void {
                         DB::transaction(function () use ($record, $data): void {
+                            // Tolak check-in prematur: belum tanggalnya (auto-complete tak pernah prematur).
+                            $checkIn = \Carbon\Carbon::parse($record->roomBooking->check_in_date)->startOfDay();
+                            if ($checkIn->gt(today())) {
+                                throw ValidationException::withMessages([
+                                    'room_id' => 'Belum tanggal check-in ('.$checkIn->format('d M Y').'). Check-in manual hanya pada/lewat tanggalnya.',
+                                ]);
+                            }
+
                             $room = Room::whereKey($data['room_id'])
                                 ->where('room_type_id', $record->roomBooking->room_type_id)
                                 ->lockForUpdate()
@@ -105,8 +113,8 @@ class ReservationsTable
 
                             $occupied = static::overlappingBookingsExist(
                                 $room->id,
-                                $record->roomBooking->check_in_date,
-                                $record->roomBooking->check_out_date,
+                                \Carbon\Carbon::parse($record->roomBooking->check_in_date)->format('Y-m-d'),
+                                \Carbon\Carbon::parse($record->roomBooking->check_out_date)->format('Y-m-d'),
                                 ignoreRoomBookingId: $record->roomBooking->id,
                             );
 
@@ -147,14 +155,16 @@ class ReservationsTable
                             $fresh = \App\Models\Reservation::whereKey($record->id)->lockForUpdate()->firstOrFail();
                             $roomBooking = $fresh->roomBooking;
 
+                            // Hanya kamar OCCUPIED yang turun ke CLEANING (selaras auto-complete);
+                            // MAINTENANCE/CLEANING/AVAILABLE dipertahankan.
                             if ($roomBooking && $roomBooking->room_id) {
                                 $room = \App\Models\Room::whereKey($roomBooking->room_id)->lockForUpdate()->first();
-                                if ($room) {
+                                if ($room && $room->status === 'OCCUPIED') {
                                     $room->update(['status' => 'CLEANING']);
                                 }
                             } elseif ($roomBooking && $roomBooking->assigned_room_number) {
                                 $room = \App\Models\Room::where('room_number', $roomBooking->assigned_room_number)->lockForUpdate()->first();
-                                if ($room) {
+                                if ($room && $room->status === 'OCCUPIED') {
                                     $room->update(['status' => 'CLEANING']);
                                 }
                             }
@@ -208,9 +218,10 @@ class ReservationsTable
      */
     public static function availableRoomsQuery($record)
     {
-        $checkIn  = $record->roomBooking->check_in_date;
-        $checkOut = $record->roomBooking->check_out_date;
-        $typeId   = $record->roomBooking->room_type_id;
+        // Format Y-m-d eksplisit: pembanding string vs kolom DATE konsisten lintas driver.
+        $checkIn = \Carbon\Carbon::parse($record->roomBooking->check_in_date)->format('Y-m-d');
+        $checkOut = \Carbon\Carbon::parse($record->roomBooking->check_out_date)->format('Y-m-d');
+        $typeId = $record->roomBooking->room_type_id;
 
         return Room::where('room_type_id', $typeId)
             ->where('status', 'AVAILABLE')

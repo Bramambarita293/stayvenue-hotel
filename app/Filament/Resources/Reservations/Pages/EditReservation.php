@@ -8,6 +8,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class EditReservation extends EditRecord
 {
@@ -23,9 +24,26 @@ class EditReservation extends EditRecord
         ];
     }
 
+    /**
+     * Cegah pengesahan tanpa bayar: masuk ke status lunas dari PENDING_PAYMENT
+     * wajib didukung payment SUCCESS. CANCELLED selalu boleh (efek samping
+     * di afterSave, kini idempoten via stock_released_at).
+     */
     protected function beforeSave(): void
     {
         $this->originalStatus = $this->getRecord()->getOriginal('status');
+
+        $newStatus = $this->data['status'] ?? $this->getRecord()->status;
+
+        if (
+            $this->originalStatus === 'PENDING_PAYMENT'
+            && in_array($newStatus, ['CONFIRMED', 'COMPLETED', 'CHECKED_IN', 'CHECKED_OUT'], true)
+            && ! $this->getRecord()->payments()->where('status', 'SUCCESS')->exists()
+        ) {
+            throw ValidationException::withMessages([
+                'status' => 'Reservasi belum dibayar (tidak ada payment SUCCESS). Pengesahan manual tanpa pembayaran diblokir.',
+            ]);
+        }
     }
 
     /**

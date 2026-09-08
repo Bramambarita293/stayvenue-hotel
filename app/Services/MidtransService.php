@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Reservation;
+use Illuminate\Support\Str;
 use Midtrans\Config;
 use Midtrans\Snap;
 
@@ -11,7 +12,7 @@ class MidtransService
     public function __construct()
     {
         Config::$serverKey = config('services.midtrans.server_key');
-        Config::$isProduction = config('services.midtrans.is_production');
+        Config::$isProduction = config('services.midtrans.is_production', false);
         Config::$isSanitized = config('services.midtrans.is_sanitized');
         Config::$is3ds = config('services.midtrans.is_3ds');
     }
@@ -30,12 +31,21 @@ class MidtransService
         Config::$isSanitized = true;
         Config::$is3ds = true;
 
-        $orderId = $reservation->reservation_code . '-' . time();
+        // Separator ganda '--' agar tak ambigu dengan '-' di dalam kode
+        // (kode acak bisa full-digit, mis. HTL-20240101-12345).
+        // Suffix acak anti tabrakan order sedetik sama (refresh double-click).
+        $orderId = $reservation->reservation_code.'--'.time().'-'.strtoupper(Str::random(4));
 
         $params = [
             'transaction_details' => [
                 'order_id' => $orderId,
                 'gross_amount' => (int) round($amount),
+            ],
+            // Selaras kebijakan hold 24 jam: order kedaluwarsa serentak dengan sapu cron.
+            'expiry' => [
+                'start_time' => date('Y-m-d H:i:s O'),
+                'unit' => 'hour',
+                'duration' => 24,
             ],
             'customer_details' => [
                 'first_name' => $reservation->guest_name,
@@ -48,11 +58,18 @@ class MidtransService
     }
 
     /**
-     * Ekstrak reservation_code dari order_id Midtrans ({code}-{unixtime}).
-     * Robust: hanya strip suffix -<digits> di ujung, bukan explode('-').
+     * Ekstrak reservation_code dari order_id Midtrans ({code}--{unixtime}-{rand}).
+     * Format lama ({code}-{unixtime} / {code}--{unixtime}) tetap didukung untuk order in-flight.
      */
     public static function reservationCodeFromOrderId(string $orderId): string
     {
+        $pos = strrpos($orderId, '--');
+        if ($pos !== false) {
+            $code = substr($orderId, 0, $pos);
+
+            return $code !== '' ? $code : $orderId;
+        }
+
         $stripped = preg_replace('/-\d+$/', '', $orderId);
 
         return $stripped !== null && $stripped !== '' ? $stripped : $orderId;

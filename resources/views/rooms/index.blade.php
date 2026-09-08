@@ -37,7 +37,7 @@
                                 @foreach ($roomImages as $img)
                                     <div class="h-full w-full flex-shrink-0 snap-center">
                                         <img class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                            src="{{ $img ? \Illuminate\Support\Facades\Storage::url($img) : 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1170&auto=format&fit=crop' }}"
+                                            src="{{ \App\Support\HotelImage::url($img, 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1170&auto=format&fit=crop') }}"
                                             alt="{{ $room->name }}" loading="lazy" decoding="async" />
                                     </div>
                                 @endforeach
@@ -86,6 +86,7 @@
                                         <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Check-in</label>
                                         <input type="date" name="check_in_date" required min="{{ now()->toDateString() }}"
                                             value="{{ old('check_in_date') }}"
+                                            data-booking-checkin
                                             @if (($room->rooms_count ?? 0) <= 0) disabled @endif
                                             class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-gold disabled:opacity-50" />
                                     </div>
@@ -93,6 +94,7 @@
                                         <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Check-out</label>
                                         <input type="date" name="check_out_date" required min="{{ now()->toDateString() }}"
                                             value="{{ old('check_out_date') }}"
+                                            data-booking-checkout
                                             @if (($room->rooms_count ?? 0) <= 0) disabled @endif
                                             class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-gold disabled:opacity-50" />
                                     </div>

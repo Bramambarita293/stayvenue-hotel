@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -21,10 +23,27 @@ class RoomBooking extends Model
     protected function casts(): array
     {
         return [
-            'check_in_date' => 'date',
-            'check_out_date' => 'date',
             'number_of_rooms' => 'integer',
         ];
+    }
+
+    /**
+     * Kolom DATE wajib tersimpan format Y-m-d persis (lihat RoomDailyInventory).
+     */
+    protected function checkInDate(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $value ? Carbon::parse($value)->startOfDay() : null,
+            set: fn ($value) => $value ? Carbon::parse($value)->format('Y-m-d') : null,
+        );
+    }
+
+    protected function checkOutDate(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $value ? Carbon::parse($value)->startOfDay() : null,
+            set: fn ($value) => $value ? Carbon::parse($value)->format('Y-m-d') : null,
+        );
     }
 
     public function reservation(): BelongsTo

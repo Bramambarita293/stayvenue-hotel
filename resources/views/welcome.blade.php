@@ -8,7 +8,7 @@
 
 @section('content')
     @php
-        $catalog = \Illuminate\Support\Facades\Cache::remember('homepage.catalog.v2', 600, function () {
+        $catalog = \Illuminate\Support\Facades\Cache::remember('homepage.catalog.v3', 600, function () {
             $roomTypes = \App\Models\RoomType::query()
                 ->withCount(['rooms' => fn ($query) => $query->where('status', '!=', 'MAINTENANCE')])
                 ->get()
@@ -30,10 +30,13 @@
                 'roomTypes' => $toStorable($roomTypes),
                 'activeHalls' => $toStorable($activeHalls),
                 'availableRoomsCount' => \App\Models\Room::where('status', '!=', 'MAINTENANCE')->count(),
+                // Sesi di-cache sekalian: hindari HallSession::all() di dalam loop.
+                'hallSessions' => \App\Models\HallSession::orderBy('start_time')->get()->toArray(),
             ];
         });
         $roomTypes = \App\Models\RoomType::hydrate($catalog['roomTypes']);
         $activeHalls = \App\Models\Hall::hydrate($catalog['activeHalls']);
+        $allSessions = \App\Models\HallSession::hydrate($catalog['hallSessions'] ?? []);
         $availableRoomsCount = $catalog['availableRoomsCount'];
         $roomTypesCount = $roomTypes->count();
         $maxCapacity = $activeHalls->max('capacity_pax');
@@ -45,7 +48,7 @@
             ->flatten()
             ->filter()
             ->first();
-        $coverUrl = $cover ? \Illuminate\Support\Facades\Storage::url($cover) : null;
+        $coverUrl = \App\Support\HotelImage::url($cover);
     @endphp
 
     <!-- Hero -->
@@ -89,29 +92,17 @@
                 </div>
             @endif
 
-            <!-- Availability bar -->
-            <form action="#rooms" method="GET"
-                class="mx-auto mt-12 grid max-w-4xl grid-cols-1 divide-y divide-line/60 overflow-hidden rounded-xl bg-white/95 text-left shadow-card backdrop-blur sm:grid-cols-2 md:grid-cols-4 md:divide-x md:divide-y-0">
-                <div class="px-6 py-5">
-                    <label class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-stone">Check-in</label>
-                    <input type="date" name="check_in_date"
-                        class="mt-1 w-full bg-transparent text-sm text-ink outline-none" />
-                </div>
-                <div class="px-6 py-5">
-                    <label class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-stone">Check-out</label>
-                    <input type="date" name="check_out_date"
-                        class="mt-1 w-full bg-transparent text-sm text-ink outline-none" />
-                </div>
-                <div class="px-6 py-5">
-                    <label class="block text-[11px] font-semibold uppercase tracking-[0.18em] text-stone">Guests</label>
-                    <input type="number" min="1" name="guests" placeholder="2"
-                        class="mt-1 w-full bg-transparent text-sm text-ink outline-none" />
-                </div>
-                <button type="submit"
-                    class="flex items-center justify-center gap-2 bg-ink px-6 py-5 text-sm font-semibold uppercase tracking-widest text-background transition-colors hover:bg-gold-soft hover:text-white">
-                    Search rooms <span class="material-symbols-outlined text-[18px]">search</span>
-                </button>
-            </form>
+            <!-- CTA hero -->
+            <div class="mx-auto mt-12 flex max-w-4xl flex-wrap items-center justify-center gap-3">
+                <a href="#rooms"
+                    class="inline-flex items-center gap-2 rounded-full bg-white/95 px-8 py-4 text-sm font-semibold uppercase tracking-widest text-ink shadow-card backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-white">
+                    Lihat kamar <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </a>
+                <a href="#halls"
+                    class="inline-flex items-center gap-2 rounded-full border border-white/40 px-8 py-4 text-sm font-semibold uppercase tracking-widest text-white backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-white/10">
+                    Lihat gedung
+                </a>
+            </div>
         </div>
     </section>
 
@@ -209,7 +200,7 @@
                 @foreach ($roomTypes as $room)
                     @php
                         $roomImages = is_string($room->images) ? json_decode($room->images, true) : $room->images;
-                        $firstImage = (!empty($roomImages) && is_array($roomImages)) ? \Illuminate\Support\Facades\Storage::url($roomImages[0]) : 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1170&auto=format&fit=crop';
+                        $firstImage = \App\Support\HotelImage::url((!empty($roomImages) && is_array($roomImages)) ? ($roomImages[0] ?? null) : null, 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1170&auto=format&fit=crop');
                     @endphp
 
                     <div
@@ -334,7 +325,7 @@
                     @foreach ($activeHalls as $hall)
                         @php
                             $hallImages = is_string($hall->images) ? json_decode($hall->images, true) : $hall->images;
-                            $firstHallImage = (!empty($hallImages) && is_array($hallImages)) ? \Illuminate\Support\Facades\Storage::url($hallImages[0]) : 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=1170&auto=format&fit=crop';
+                            $firstHallImage = \App\Support\HotelImage::url((!empty($hallImages) && is_array($hallImages)) ? ($hallImages[0] ?? null) : null, 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=1170&auto=format&fit=crop');
                             $reverse = $loop->iteration % 2 === 0;
                         @endphp
                         <div class="flex flex-col items-center gap-8 md:flex-row {{ $reverse ? 'md:flex-row-reverse' : '' }}">
@@ -388,16 +379,21 @@
                                             <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Sesi waktu</label>
                                             <select name="session_id" required
                                                 class="mt-1.5 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-gold focus:ring-1 focus:ring-gold/30">
-                                                @foreach (\App\Models\HallSession::all() as $session)
+                                                @forelse ($allSessions as $session)
                                                     <option value="{{ $session->id }}">{{ $session->session_name }}</option>
-                                                @endforeach
+                                                @empty
+                                                    <option value="" disabled>Belum ada sesi — hubungi kami</option>
+                                                @endforelse
                                             </select>
                                         </div>
                                     </div>
                                     <div class="mt-4">
                                         <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Jenis acara</label>
-                                        <input type="text" name="event_type" placeholder="Pernikahan / Wisuda / Rapat corporate" required maxlength="100"
-                                            class="mt-1.5 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-gold focus:ring-1 focus:ring-gold/30" />
+                                        <select name="event_type" required
+                                            class="mt-1.5 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-gold focus:ring-1 focus:ring-gold/30">
+                                            <option value="" disabled selected>Pilih jenis acara</option>
+                                            @include('partials.event-type-options')
+                                        </select>
                                     </div>
                                     @include('partials.availability-status', ['ctaUrl' => route('halls.index'), 'ctaLabel' => 'Lihat gedung lain'])
                                     <button type="submit" data-availability-submit

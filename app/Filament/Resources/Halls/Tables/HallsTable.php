@@ -15,7 +15,7 @@ class HallsTable
             ->columns([
                 ImageColumn::make('images')
                     ->label('Foto')
-                    ->disk('public')
+                    ->disk('s3')
                     ->stacked()
                     ->limit(1)
                     ->limitedRemainingText(),

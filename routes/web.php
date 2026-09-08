@@ -8,12 +8,16 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\HallController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\RoomController;
 
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::view('/privacy', 'legal.privacy')->name('privacy');
+Route::view('/terms', 'legal.terms')->name('terms');
 
 // Halaman Contact & Lokasi
 Route::get('/contact', [ContactController::class, 'index'])->name('contact');
@@ -36,6 +40,11 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
+
+    Route::get('/forgot-password', [PasswordResetController::class, 'showRequestForm'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])->middleware('throttle:3,1')->name('password.email');
+    Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->middleware('throttle:5,1')->name('password.update');
 });
 
 // route login ( user )
@@ -44,8 +53,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/booking/room', [BookingController::class, 'checkoutRoom'])->middleware('throttle:10,1')->name('booking.room.checkout');
     Route::post('/booking/hall', [BookingController::class, 'checkoutHall'])->middleware('throttle:10,1')->name('booking.hall.checkout');
     Route::get('/booking/pay/{code}', [BookingController::class, 'showPaymentPage'])->where('code', '[A-Za-z0-9\-]+')->name('booking.pay');
+    Route::post('/booking/refresh/{code}', [BookingController::class, 'refreshPayment'])->where('code', '[A-Za-z0-9\-]+')->middleware('throttle:5,1')->name('booking.refresh');
 
-    Route::get('/voucher/{code}', [VoucherController::class, 'show'])->where('code', '[A-Za-z0-9\-]+')->name('voucher.show');
+    Route::get('/voucher/{code}', [VoucherController::class, 'show'])->where('code', '[A-Za-z0-9\-]+')->middleware('throttle:30,1')->name('voucher.show');
     Route::get('/voucher/{code}/download', [VoucherController::class, 'download'])->where('code', '[A-Za-z0-9\-]+')->middleware('throttle:10,1')->name('voucher.download');
 
     // reservasi

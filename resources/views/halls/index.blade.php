@@ -26,7 +26,7 @@
                 @foreach ($halls as $hall)
                     @php
                         $hallImages = is_string($hall->images) ? json_decode($hall->images, true) : $hall->images;
-                        $firstImage = (!empty($hallImages) && is_array($hallImages) && count($hallImages) > 0) ? \Illuminate\Support\Facades\Storage::url($hallImages[0]) : 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=1170&auto=format&fit=crop';
+                        $firstImage = \App\Support\HotelImage::url((!empty($hallImages) && is_array($hallImages) && count($hallImages) > 0) ? $hallImages[0] : null, 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=1170&auto=format&fit=crop');
                         $reverse = $loop->iteration % 2 === 0;
                     @endphp
                     <div class="flex flex-col gap-8 overflow-hidden rounded-2xl border border-line/70 bg-surface shadow-card md:flex-row {{ $reverse ? 'md:flex-row-reverse' : '' }}">

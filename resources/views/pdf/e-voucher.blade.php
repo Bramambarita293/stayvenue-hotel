@@ -136,39 +136,44 @@
 
                 <div class="section-title">DETAIL RESERVASI ({{ $reservation->reservation_type == 'ROOM' ? 'KAMAR HOTEL' : 'SEWA GEDUNG' }})</div>
                 <table class="info-table">
-                    @if($reservation->reservation_type == 'ROOM')
+                    @if($reservation->reservation_type == 'ROOM' && $reservation->roomBooking)
                         <tr>
                             <td class="label">Tipe Kamar:</td>
-                            <td class="value">{{ $reservation->roomBooking->roomType->name ?? '-' }}</td>
+                            <td class="value">{{ $reservation->roomBooking->roomType?->name ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="label">Tanggal Check-In:</td>
-                            <td class="value">{{ \Carbon\Carbon::parse($reservation->roomBooking->check_in_date)->format('d M Y') }} (14:00 WIB)</td>
+                            <td class="value">{{ $reservation->roomBooking->check_in_date ? \Carbon\Carbon::parse($reservation->roomBooking->check_in_date)->format('d M Y') : '-' }} (14:00 WIB)</td>
                         </tr>
                         <tr>
                             <td class="label">Tanggal Check-Out:</td>
-                            <td class="value">{{ \Carbon\Carbon::parse($reservation->roomBooking->check_out_date)->format('d M Y') }} (12:00 WIB)</td>
+                            <td class="value">{{ $reservation->roomBooking->check_out_date ? \Carbon\Carbon::parse($reservation->roomBooking->check_out_date)->format('d M Y') : '-' }} (12:00 WIB)</td>
                         </tr>
                         <tr>
                             <td class="label">Jumlah Kamar:</td>
-                            <td class="value">{{ $reservation->roomBooking->number_of_rooms }} Unit</td>
+                            <td class="value">{{ $reservation->roomBooking->number_of_rooms ?? '-' }} Unit</td>
                         </tr>
-                    @else
+                    @elseif($reservation->reservation_type == 'HALL' && $reservation->hallBooking)
                         <tr>
                             <td class="label">Gedung / Room:</td>
-                            <td class="value">{{ $reservation->hallBooking->hall->name ?? '-' }}</td>
+                            <td class="value">{{ $reservation->hallBooking->hall?->name ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="label">Tanggal Acara:</td>
-                            <td class="value">{{ \Carbon\Carbon::parse($reservation->hallBooking->event_date)->format('d M Y') }}</td>
+                            <td class="value">{{ $reservation->hallBooking->event_date ? \Carbon\Carbon::parse($reservation->hallBooking->event_date)->format('d M Y') : '-' }}</td>
                         </tr>
                         <tr>
                             <td class="label">Sesi / Slot:</td>
-                            <td class="value">{{ $reservation->hallBooking->session->session_name ?? '-' }}</td>
+                            <td class="value">{{ $reservation->hallBooking->session?->session_name ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td class="label">Jenis Acara:</td>
-                            <td class="value">{{ $reservation->hallBooking->event_type }}</td>
+                            <td class="value">{{ $reservation->hallBooking->event_type_label }}</td>
+                        </tr>
+                    @else
+                        <tr>
+                            <td class="label">Detail:</td>
+                            <td class="value">Data pemesanan tidak lengkap — hubungi resepsionis.</td>
                         </tr>
                     @endif
                     <tr>

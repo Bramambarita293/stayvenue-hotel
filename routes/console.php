@@ -8,7 +8,13 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('midtrans:check-pending')->everyThirtyMinutes();
+Schedule::command('midtrans:check-pending')
+    ->everyThirtyMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
 
 // Sapu reservasi yang masa inap/acaranya lewat kemarin (01:00 WIB, trafik sepi).
-Schedule::command('stays:auto-complete')->dailyAt('01:00');
+Schedule::command('stays:auto-complete')
+    ->dailyAt('01:00')
+    ->withoutOverlapping()
+    ->onOneServer();

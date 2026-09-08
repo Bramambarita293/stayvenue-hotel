@@ -47,8 +47,8 @@
         <div class="mt-14 flex flex-col items-center justify-between gap-4 border-t border-background/10 pt-6 md:flex-row">
             <p class="text-xs text-background/40">© {{ date('Y') }} {{ $site['long_name'] }}. All rights reserved.</p>
             <div class="flex gap-6 text-xs text-background/40">
-                <a href="#" class="transition-colors hover:text-gold">Privacy Policy</a>
-                <a href="#" class="transition-colors hover:text-gold">Terms of Service</a>
+                <a href="{{ route('privacy') }}" class="transition-colors hover:text-gold">Privacy Policy</a>
+                <a href="{{ route('terms') }}" class="transition-colors hover:text-gold">Terms of Service</a>
             </div>
         </div>
     </div>

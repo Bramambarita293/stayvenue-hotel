@@ -43,14 +43,14 @@
 
                                     @if ($res->reservation_type == 'ROOM' && $res->roomBooking)
                                         <div class="mt-2 text-xs text-stone">
-                                            <span class="font-semibold text-ink">{{ $res->roomBooking->roomType->name ?? '-' }}</span>
+                                            <span class="font-semibold text-ink">{{ $res->roomBooking->roomType?->name ?? '-' }}</span>
                                             ({{ $res->roomBooking->number_of_rooms }} unit)<br />
                                             Check-in {{ \Carbon\Carbon::parse($res->roomBooking->check_in_date)->format('d M Y') }}
                                         </div>
                                     @elseif ($res->reservation_type == 'HALL' && $res->hallBooking)
                                         <div class="mt-2 text-xs text-stone">
-                                            <span class="font-semibold text-ink">{{ $res->hallBooking->hall->name ?? '-' }}</span>
-                                            – {{ $res->hallBooking->event_type }}<br />
+                                            <span class="font-semibold text-ink">{{ $res->hallBooking->hall?->name ?? '-' }}</span>
+                                            – {{ $res->hallBooking->event_type_label }}<br />
                                             Tanggal {{ \Carbon\Carbon::parse($res->hallBooking->event_date)->format('d M Y') }}
                                         </div>
                                     @endif
@@ -61,7 +61,7 @@
                                 </td>
 
                                 <td class="p-5">
-                                    @if (in_array($res->status, ['CONFIRMED', 'COMPLETED', 'CHECKED_IN']))
+                                    @if (in_array($res->status, ['CONFIRMED', 'COMPLETED', 'CHECKED_IN', 'CHECKED_OUT']))
                                         <span class="inline-flex items-center gap-1 rounded-full bg-successful/10 px-3 py-1 text-xs font-semibold text-successful">
                                             <span class="material-symbols-outlined text-[14px]">check_circle</span> LUNAS
                                         </span>
@@ -82,7 +82,7 @@
                                             class="inline-block rounded-full bg-ink px-5 py-2 text-xs font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">
                                             Bayar sekarang
                                         </a>
-                                    @elseif (in_array($res->status, ['CONFIRMED', 'COMPLETED', 'CHECKED_IN']))
+                                    @elseif (in_array($res->status, ['CONFIRMED', 'COMPLETED', 'CHECKED_IN', 'CHECKED_OUT']))
                                         <div class="flex items-center justify-center gap-2">
                                             <a href="{{ route('voucher.show', $res->reservation_code) }}"
                                                 class="rounded-full border border-line bg-surface px-4 py-2 text-xs font-semibold text-ink transition-colors hover:border-ink">Lihat</a>

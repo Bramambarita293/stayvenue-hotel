@@ -51,7 +51,9 @@ class BookingController extends Controller
                 'booked_count' => 0,
             ]);
         } catch (QueryException $e) {
-            if (($e->errorInfo[1] ?? null) == 1062) {
+            report($e);
+            $sqlState = $e->errorInfo[0] ?? null;
+            if ($sqlState === '23000' || ($e->errorInfo[1] ?? null) == 1062) {
                 return RoomDailyInventory::where('room_type_id', $roomTypeId)
                     ->where('date', $dateString)
                     ->lockForUpdate()
@@ -71,22 +73,40 @@ class BookingController extends Controller
     {
         $validated = $request->validated();
 
-        $roomType = RoomType::findOrFail($validated['room_type_id']);
         $user = Auth::user();
 
         $checkIn = Carbon::parse($validated['check_in_date']);
         $checkOut = Carbon::parse($validated['check_out_date']);
         $requestedRooms = (int) $validated['number_of_rooms'];
-        $nights = $checkIn->diffInDays($checkOut);
-        $totalAmount = $roomType->base_price * $nights * $requestedRooms;
 
         $periodDates = [];
         foreach (CarbonPeriod::create($checkIn, $checkOut->copy()->subDay()) as $date) {
             $periodDates[] = $date->format('Y-m-d');
         }
 
-        // 1. TRANSAKSI: baca total fisik DI DALAM transaksi + kunci stok atomik.
-        $reservation = DB::transaction(function () use ($validated, $user, $roomType, $totalAmount, $periodDates, $requestedRooms) {
+        // 1. TRANSAKSI: harga + total fisik dibaca DI DALAM transaksi (lock baris
+        // tipe) + kunci stok atomik. Termasuk anti double-submit: reservasi
+        // PENDING identik <10 mnt dipakai ulang.
+        $result = DB::transaction(function () use ($validated, $user, $periodDates, $requestedRooms, $checkIn, $checkOut) {
+            $duplicate = Reservation::where('user_id', $user->id)
+                ->where('reservation_type', 'ROOM')
+                ->where('status', 'PENDING_PAYMENT')
+                ->where('created_at', '>', now()->subMinutes(10))
+                ->whereHas('roomBooking', fn ($q) => $q
+                    ->where('room_type_id', $validated['room_type_id'])
+                    ->where('check_in_date', $validated['check_in_date'])
+                    ->where('check_out_date', $validated['check_out_date'])
+                    ->where('number_of_rooms', $requestedRooms))
+                ->latest()
+                ->first();
+
+            if ($duplicate) {
+                return ['reservation' => $duplicate, 'reused' => true, 'totalAmount' => (float) $duplicate->total_amount];
+            }
+
+            $roomType = RoomType::whereKey($validated['room_type_id'])->lockForUpdate()->firstOrFail();
+            $nights = $checkIn->diffInDays($checkOut);
+            $totalAmount = $roomType->base_price * $nights * $requestedRooms;
             $totalPhysicalRooms = $roomType->rooms()->where('status', '!=', 'MAINTENANCE')->count();
 
             if ($totalPhysicalRooms <= 0) {
@@ -136,18 +156,37 @@ class BookingController extends Controller
                     ->increment('booked_count', $requestedRooms);
             }
 
-            return $reservation;
+            // E. Placeholder payment INITIATED di DALAM transaksi agar tak pernah yatim.
+            $reservation->payments()->create([
+                'payment_type' => 'FULL',
+                'amount' => $totalAmount,
+                'payment_gateway' => 'MIDTRANS',
+                'status' => 'INITIATED',
+            ]);
+
+            return ['reservation' => $reservation, 'reused' => false, 'totalAmount' => (float) $totalAmount];
         });
+
+        $reservation = $result['reservation'];
+        $totalAmount = $result['totalAmount'];
+
+        // Idempotensi: duplikat yang dipakai ulang sudah punya payment aktif.
+        if ($reservation->payments()->whereIn('status', ['PENDING', 'CHALLENGE'])->exists()) {
+            return redirect()->route('booking.pay', $reservation->reservation_code);
+        }
+
+        $payment = $reservation->payments()->where('status', 'INITIATED')->latest()->firstOrFail();
 
         // 2. Generate Midtrans Snap Token DI LUAR transaksi agar lock tidak ditahan
         // saat network call lambat. Jika gagal, batalkan + release stok (kompensasi).
         try {
             [$orderId, $snapToken] = $midtransService->createSnapToken($reservation, $totalAmount, 'FULL');
         } catch (Throwable $e) {
-            DB::transaction(function () use ($reservation) {
+            DB::transaction(function () use ($reservation, $payment) {
                 $fresh = Reservation::whereKey($reservation->id)->lockForUpdate()->first();
                 if ($fresh && $fresh->status === 'PENDING_PAYMENT') {
                     $fresh->update(['status' => 'CANCELLED']);
+                    Payment::whereKey($payment->id)->update(['status' => 'FAILED']);
                     $fresh->releaseStock();
                 }
             });
@@ -156,12 +195,8 @@ class BookingController extends Controller
             return back()->withErrors(['check_in_date' => 'Gagal membuat pembayaran, silakan coba lagi.']);
         }
 
-        Payment::create([
-            'reservation_id' => $reservation->id,
+        $payment->update([
             'transaction_id' => $orderId,
-            'payment_type' => 'FULL',
-            'amount' => $totalAmount,
-            'payment_gateway' => 'MIDTRANS',
             'snap_token' => $snapToken,
             'status' => 'PENDING',
         ]);
@@ -187,26 +222,107 @@ class BookingController extends Controller
     }
 
     /**
+     * Terbitkan ulang Snap token bila token lama basi/expired.
+     * Aman: hanya bila order lama sudah mati (expire/cancel/deny) atau
+     * belum pernah terbit (INITIATED). Order PENDING aktif tidak diganti
+     * agar tak tercipta order ganda yang bisa dibayar terpisah.
+     */
+    public function refreshPayment(string $code, MidtransService $midtransService)
+    {
+        $reservation = Reservation::where('reservation_code', $code)
+            ->where('user_id', Auth::id())
+            ->where('status', 'PENDING_PAYMENT')
+            ->firstOrFail();
+
+        $payment = Payment::where('reservation_id', $reservation->id)
+            ->whereIn('status', ['PENDING', 'CHALLENGE', 'INITIATED'])
+            ->latest()
+            ->firstOrFail();
+
+        if ($payment->transaction_id) {
+            try {
+                $status = Transaction::status($payment->transaction_id);
+                $txnStatus = $status->transaction_status ?? null;
+
+                if (! in_array($txnStatus, ['expire', 'cancel', 'deny'])) {
+                    return back()->with('error', 'Pembayaran sebelumnya masih aktif. Selesaikan pembayaran atau tunggu hingga kedaluwarsa.');
+                }
+
+                // Tandai order lama mati agar webhook susulan tidak memprosesnya.
+                $payment->update(['status' => $txnStatus === 'expire' ? 'EXPIRED' : 'FAILED']);
+            } catch (Throwable $e) {
+                report($e);
+
+                return back()->withErrors(['payment' => 'Gagal memeriksa status pembayaran lama. Coba lagi.']);
+            }
+        }
+
+        try {
+            [$orderId, $snapToken] = $midtransService->createSnapToken($reservation, (float) $reservation->total_amount, 'FULL');
+        } catch (Throwable $e) {
+            report($e);
+
+            return back()->withErrors(['payment' => 'Gagal membuat pembayaran baru. Coba lagi.']);
+        }
+
+        $reservation->payments()->create([
+            'transaction_id' => $orderId,
+            'payment_type' => 'FULL',
+            'amount' => $reservation->total_amount,
+            'payment_gateway' => 'MIDTRANS',
+            'snap_token' => $snapToken,
+            'status' => 'PENDING',
+        ]);
+
+        return redirect()->route('booking.pay', $reservation->reservation_code)
+            ->with('success', 'Link pembayaran baru telah dibuat.');
+    }
+
+    /**
      * Proses Checkout Sewa Gedung Acara
      */
     public function checkoutHall(CheckoutHallRequest $request, MidtransService $midtransService)
     {
         $validated = $request->validated();
 
-        $hall = Hall::where('is_active', true)->findOrFail($validated['hall_id']);
         $user = Auth::user();
 
-        // 1. Hitung Biaya (paket sudah dipastikan milik hall via FormRequest)
-        $totalAmount = $hall->base_rental_price;
-        if (!empty($validated['event_package_id'])) {
-            $package = EventPackage::whereKey($validated['event_package_id'])
-                ->where('hall_id', $hall->id)
-                ->firstOrFail();
-            $totalAmount += $package->price;
-        }
+        // 2. TRANSAKSI: harga + aktivasi dibaca DI DALAM transaksi (lock baris hall),
+        // cek ketersediaan + insert atomik. Termasuk anti double-submit.
+        $result = DB::transaction(function () use ($validated, $user) {
+            $duplicate = Reservation::where('user_id', $user->id)
+                ->where('reservation_type', 'HALL')
+                ->where('status', 'PENDING_PAYMENT')
+                ->where('created_at', '>', now()->subMinutes(10))
+                ->whereHas('hallBooking', fn ($q) => $q
+                    ->where('hall_id', $validated['hall_id'])
+                    ->where('session_id', $validated['session_id'])
+                    ->where('event_date', $validated['event_date']))
+                ->latest()
+                ->first();
 
-        // 2. TRANSAKSI: cek ketersediaan + insert dilakukan atomik.
-        $reservation = DB::transaction(function () use ($validated, $user, $hall, $totalAmount) {
+            if ($duplicate) {
+                return ['reservation' => $duplicate, 'totalAmount' => (float) $duplicate->total_amount];
+            }
+
+            // Kunci baris hall: cegah perubahan harga/deaktivasi di tengah checkout.
+            $hall = Hall::whereKey($validated['hall_id'])->lockForUpdate()->firstOrFail();
+            if (! $hall->is_active) {
+                throw ValidationException::withMessages([
+                    'hall_id' => 'Gedung tidak tersedia saat ini.',
+                ]);
+            }
+
+            // 1. Hitung Biaya (paket sudah dipastikan milik hall via FormRequest)
+            $totalAmount = $hall->base_rental_price;
+            if (!empty($validated['event_package_id'])) {
+                $package = EventPackage::whereKey($validated['event_package_id'])
+                    ->where('hall_id', $hall->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $totalAmount += $package->price;
+            }
+
             $alreadyBooked = HallAvailability::where([
                 ['hall_id', '=', $hall->id],
                 ['session_id', '=', $validated['session_id']],
@@ -250,8 +366,10 @@ class BookingController extends Controller
                     'status' => 'LOCKED',
                 ]);
             } catch (QueryException $e) {
-                // Kalah race terhadap request lain pada unique [hall_id, session_id, event_date]
-                if (($e->errorInfo[1] ?? null) == 1062) {
+                // Kalah race terhadap request lain pada unique [hall_id, session_id, event_date].
+                // SQLSTATE 23000 lintas driver (MySQL 1062, pgsql 23505, sqlite 19).
+                $sqlState = $e->errorInfo[0] ?? null;
+                if ($sqlState === '23000' || ($e->errorInfo[1] ?? null) == 1062) {
                     throw ValidationException::withMessages([
                         'event_date' => 'Gedung tidak tersedia pada tanggal dan sesi terpilih.'
                     ]);
@@ -260,16 +378,35 @@ class BookingController extends Controller
                 throw $e;
             }
 
-            return $reservation;
+            // E. Placeholder payment INITIATED di DALAM transaksi agar tak pernah yatim.
+            $reservation->payments()->create([
+                'payment_type' => 'FULL',
+                'amount' => $totalAmount,
+                'payment_gateway' => 'MIDTRANS',
+                'status' => 'INITIATED',
+            ]);
+
+            return ['reservation' => $reservation, 'totalAmount' => (float) $totalAmount];
         });
+
+        $reservation = $result['reservation'];
+        $totalAmount = $result['totalAmount'];
+
+        // Idempotensi: duplikat yang dipakai ulang sudah punya payment aktif.
+        if ($reservation->payments()->whereIn('status', ['PENDING', 'CHALLENGE'])->exists()) {
+            return redirect()->route('booking.pay', $reservation->reservation_code);
+        }
+
+        $payment = $reservation->payments()->where('status', 'INITIATED')->latest()->firstOrFail();
 
         try {
             [$orderId, $snapToken] = $midtransService->createSnapToken($reservation, $totalAmount, 'FULL');
         } catch (Throwable $e) {
-            DB::transaction(function () use ($reservation) {
+            DB::transaction(function () use ($reservation, $payment) {
                 $fresh = Reservation::whereKey($reservation->id)->lockForUpdate()->first();
                 if ($fresh && $fresh->status === 'PENDING_PAYMENT') {
                     $fresh->update(['status' => 'CANCELLED']);
+                    Payment::whereKey($payment->id)->update(['status' => 'FAILED']);
                     $fresh->releaseStock();
                 }
             });
@@ -278,12 +415,8 @@ class BookingController extends Controller
             return back()->withErrors(['event_date' => 'Gagal membuat pembayaran, silakan coba lagi.']);
         }
 
-        Payment::create([
-            'reservation_id' => $reservation->id,
+        $payment->update([
             'transaction_id' => $orderId,
-            'payment_type' => 'FULL',
-            'amount' => $totalAmount,
-            'payment_gateway' => 'MIDTRANS',
             'snap_token' => $snapToken,
             'status' => 'PENDING',
         ]);
@@ -336,29 +469,49 @@ class BookingController extends Controller
                 if ($status === 'settlement' || ($status === 'capture' && $fraud === 'accept')) {
                     DB::transaction(function () use ($res, $payment, $midtransStatus) {
                         $fresh = Reservation::whereKey($res->id)->lockForUpdate()->first();
-                        if (!$fresh || $fresh->status !== 'PENDING_PAYMENT') {
+                        if (! $fresh || $fresh->status !== 'PENDING_PAYMENT') {
+                            return;
+                        }
+
+                        $lockedPayment = Payment::whereKey($payment->id)->lockForUpdate()->first();
+                        if (! $lockedPayment || ! in_array($lockedPayment->status, ['PENDING', 'CHALLENGE'])) {
                             return;
                         }
 
                         $fresh->update(['status' => 'CONFIRMED']);
-                        $payment->update([
+                        $lockedPayment->update([
                             'status' => 'SUCCESS',
                             'payment_method' => $midtransStatus->payment_type ?? 'MIDTRANS',
                             'paid_at' => now(),
                         ]);
                     });
                 } elseif ($status === 'capture' && $fraud === 'challenge') {
-                    $payment->update(['status' => 'CHALLENGE']);
+                    // Terkunci + guard agar tak menimpa SUCCESS dari webhook yang lebih dulu.
+                    DB::transaction(function () use ($res, $payment) {
+                        $fresh = Reservation::whereKey($res->id)->lockForUpdate()->first();
+                        if (! $fresh || $fresh->status !== 'PENDING_PAYMENT') {
+                            return;
+                        }
+
+                        Payment::whereKey($payment->id)
+                            ->whereIn('status', ['PENDING', 'CHALLENGE'])
+                            ->update(['status' => 'CHALLENGE']);
+                    });
                 } elseif (in_array($status, ['deny', 'expire', 'cancel'])) {
                     DB::transaction(function () use ($res, $payment, $status) {
                         $fresh = Reservation::whereKey($res->id)->lockForUpdate()->first();
-                        if (!$fresh || $fresh->status !== 'PENDING_PAYMENT') {
+                        if (! $fresh || $fresh->status !== 'PENDING_PAYMENT') {
+                            return;
+                        }
+
+                        $lockedPayment = Payment::whereKey($payment->id)->lockForUpdate()->first();
+                        if (! $lockedPayment || ! in_array($lockedPayment->status, ['PENDING', 'CHALLENGE'])) {
                             return;
                         }
 
                         $fresh->update(['status' => 'CANCELLED']);
                         // Selaras webhook/command: expire→EXPIRED, lainnya FAILED.
-                        $payment->update(['status' => $status === 'expire' ? 'EXPIRED' : 'FAILED']);
+                        $lockedPayment->update(['status' => $status === 'expire' ? 'EXPIRED' : 'FAILED']);
 
                         // Release stok room maupun hall secara idempoten
                         $fresh->releaseStock();

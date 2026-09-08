@@ -25,7 +25,9 @@ class RoomTypeForm
 
                         TextInput::make('slug')
                             ->required()
-                            ->readOnly(),
+                            ->readOnly()
+                            // Tanpa JS slug bisa kosong: isi dari nama di server.
+                            ->dehydrateStateUsing(fn ($state, callable $get) => $state ?: Str::slug((string) $get('name'))),
 
                         TextInput::make('base_price')
                             ->label('Harga per Malam (Rp)')
@@ -33,12 +35,9 @@ class RoomTypeForm
                             ->prefix('Rp')
                             ->required(),
 
-                        TextInput::make('total_inventory')
+                        \Filament\Forms\Components\Placeholder::make('inventory_info')
                             ->label('Total Stok Unit Fisik')
-                            ->numeric()
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->placeholder('Dihitung dari Room Status'),
+                            ->content('Dihitung otomatis dari tabel Room (di luar MAINTENANCE).'),
 
                         TextInput::make('max_guests')
                             ->label('Maksimal Tamu')
@@ -51,7 +50,7 @@ class RoomTypeForm
                             ->image()
                             ->multiple()
                             ->reorderable()
-                            ->disk('public')
+                            ->disk('s3')
                             ->directory('room-types')
                             ->columnSpanFull(),
 

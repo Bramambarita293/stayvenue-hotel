@@ -7,7 +7,6 @@ use App\Models\Reservation;
 use App\Models\RoomType;
 use App\Policies\ReservationPolicy;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
@@ -37,16 +36,27 @@ class AppServiceProvider extends ServiceProvider
             $view->with('site', config('site'));
         });
 
-        View::composer(['auth.login', 'auth.register'], function ($view) {
-            $view->with('authCover', static::coverImage());
+        View::composer(['auth.login'], function ($view) {
+            $view->with('authCover', static::coverImage(\App\Models\SiteSetting::get(\App\Models\SiteSetting::AUTH_LOGIN_COVER)));
+        });
+
+        View::composer(['auth.register'], function ($view) {
+            $view->with('authCover', static::coverImage(\App\Models\SiteSetting::get(\App\Models\SiteSetting::AUTH_REGISTER_COVER)));
         });
     }
 
     /**
-     * Resolve a real cover image from seeded room/hall photos.
+     * Sampul auth berlapis: setting admin -> foto produk -> bawaan.
      */
-    protected static function coverImage(): string
+    protected static function coverImage(?string $configured = null): string
     {
+        if ($configured) {
+            $url = \App\Support\HotelImage::url($configured);
+            if ($url !== '') {
+                return $url;
+            }
+        }
+
         $images = collect()
             ->merge(Hall::where('is_active', true)->pluck('images')->flatten())
             ->merge(RoomType::pluck('images')->flatten())
@@ -54,7 +64,7 @@ class AppServiceProvider extends ServiceProvider
             ->values();
 
         if ($image = $images->first()) {
-            return Storage::url($image);
+            return \App\Support\HotelImage::url($image, 'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1170&auto=format&fit=crop');
         }
 
         return 'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1170&auto=format&fit=crop';

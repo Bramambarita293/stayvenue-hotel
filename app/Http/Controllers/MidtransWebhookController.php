@@ -22,14 +22,19 @@ class MidtransWebhookController extends Controller
         $grossAmount = $request->input('gross_amount');
         $signatureKey = (string) $request->input('signature_key', '');
 
-        // Verifikasi signature eksplisit agar POST palsu tidak bisa spoofing.
-        if ($orderId && $statusCode && $grossAmount !== null) {
-            $expected = hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey);
-            if (! hash_equals($expected, $signatureKey)) {
-                Log::warning('Midtrans webhook signature invalid.', ['order_id' => $orderId]);
+        // Verifikasi signature WAJIB: tanpa 3 field + signature cocok, tolak.
+        // Mencegah spoof settlement -> CONFIRMED gratis via POST palsu.
+        if ($orderId === '' || $statusCode === '' || $grossAmount === null || $signatureKey === '') {
+            Log::warning('Midtrans webhook ditolak: field signature tidak lengkap.');
 
-                return response()->json(['message' => 'Invalid signature'], 403);
-            }
+            return response()->json(['message' => 'Incomplete notification'], 403);
+        }
+
+        $expected = hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey);
+        if (! hash_equals($expected, $signatureKey)) {
+            Log::warning('Midtrans webhook signature invalid.', ['order_id' => $orderId]);
+
+            return response()->json(['message' => 'Invalid signature'], 403);
         }
 
         Log::info('Midtrans Webhook received.', ['order_id' => $orderId]);
@@ -42,9 +47,16 @@ class MidtransWebhookController extends Controller
             return response()->json(['message' => 'Invalid Notification'], 400);
         }
 
-        $transactionStatus = $notif->transaction_status;
-        $type = $notif->payment_type;
-        $orderId = $notif->order_id;
+        $transactionStatus = $notif->transaction_status ?? null;
+        $type = $notif->payment_type ?? 'MIDTRANS';
+        // Trust boundary: order_id hasil parse SDK wajib sama dengan yang
+        // sudah terverifikasi signature-nya. Beda -> body diutak-atik.
+        $notifOrderId = (string) ($notif->order_id ?? '');
+        if ($notifOrderId !== $orderId) {
+            Log::warning('Midtrans webhook order mismatch.', ['signed' => $orderId, 'body' => $notifOrderId]);
+
+            return response()->json(['message' => 'Order mismatch'], 403);
+        }
         $fraudStatus = $notif->fraud_status ?? null;
         $grossAmount = $notif->gross_amount ?? null;
         $reservationCode = \App\Services\MidtransService::reservationCodeFromOrderId($orderId);
@@ -112,10 +124,15 @@ class MidtransWebhookController extends Controller
                 $paymentStatus = $transactionStatus === 'expire' ? 'EXPIRED' : 'FAILED';
                 $payment?->update(['status' => $paymentStatus]);
 
-                if ($reservation->roomBooking && $reservation->roomBooking->room_id) {
-                    $reservation->roomBooking->room?->update(['status' => 'AVAILABLE']);
-                    $reservation->roomBooking->update([
-                        'room_id'              => null,
+                $roomBooking = $reservation->roomBooking;
+                if ($roomBooking && $roomBooking->room_id) {
+                    $room = \App\Models\Room::whereKey($roomBooking->room_id)->lockForUpdate()->first();
+                    // Hanya kembalikan kamar yang OCCUPIED; MAINTENANCE/CLEANING dipertahankan.
+                    if ($room && $room->status === 'OCCUPIED') {
+                        $room->update(['status' => 'AVAILABLE']);
+                    }
+                    $roomBooking->update([
+                        'room_id' => null,
                         'assigned_room_number' => null,
                     ]);
                 }

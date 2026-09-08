@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Reservations\Pages;
 
 use App\Filament\Resources\Reservations\ReservationResource;
-use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListReservations extends ListRecords
@@ -12,9 +11,8 @@ class ListReservations extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            CreateAction::make(),
-        ];
+        // Tanpa tombol create: reservasi hanya lahir dari checkout user.
+        return [];
     }
 
     protected function getTableQuery(): ?\Illuminate\Database\Eloquent\Builder

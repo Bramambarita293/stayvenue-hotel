@@ -17,7 +17,8 @@ class ReservationForm
                     ->schema([
                         TextInput::make('reservation_code')
                             ->label('Kode Booking')
-                            ->readOnly(),
+                            ->readOnly()
+                            ->dehydrated(false),
 
                         TextInput::make('guest_name')
                             ->label('Nama Pemesan')
@@ -34,12 +35,14 @@ class ReservationForm
 
                         TextInput::make('reservation_type')
                             ->label('Kategori')
-                            ->readOnly(),
+                            ->readOnly()
+                            ->dehydrated(false),
 
                         TextInput::make('total_amount')
                             ->label('Total Biaya')
                             ->prefix('Rp')
-                            ->readOnly(),
+                            ->readOnly()
+                            ->dehydrated(false),
 
                         Select::make('status')
                             ->options([

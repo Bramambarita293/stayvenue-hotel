@@ -16,6 +16,13 @@
                 <h1 class="mt-3 font-display text-4xl font-medium tracking-tight text-ink">Sign in to your account</h1>
                 <p class="mt-2 text-sm text-stone">Continue your stay and manage your reservations.</p>
 
+                @if (session('status'))
+                    <div class="mt-6 flex items-start gap-3 rounded-xl border border-successful/30 bg-successful/10 p-4 text-sm text-successful">
+                        <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                        <p>{{ session('status') }}</p>
+                    </div>
+                @endif
+
                 @if ($errors->any())
                     <div class="mt-6 flex items-start gap-3 rounded-xl border border-danger/20 bg-danger/5 p-4 text-sm text-danger">
                         <span class="material-symbols-outlined text-[20px]">error</span>
@@ -45,7 +52,7 @@
                                 class="h-4 w-4 rounded border-line text-gold-soft focus:ring-gold-soft" />
                             Remember me
                         </label>
-                        <a href="#" class="font-medium text-ink underline-offset-4 transition-colors hover:text-gold-soft hover:underline">Forgot password?</a>
+                        <a href="{{ route('password.request') }}" class="font-medium text-ink underline-offset-4 transition-colors hover:text-gold-soft hover:underline">Forgot password?</a>
                     </div>
 
                     <button type="submit"

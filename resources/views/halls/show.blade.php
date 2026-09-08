@@ -21,14 +21,14 @@
         <div class="mt-6 grid h-[380px] grid-cols-1 gap-2 overflow-hidden rounded-2xl md:h-[520px] md:grid-cols-4 md:grid-rows-2">
             <div class="h-full w-full md:col-span-2 md:row-span-2">
                 <img class="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
-                    src="{{ $hallImages[0] ? \Illuminate\Support\Facades\Storage::url($hallImages[0]) : 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=1170&auto=format&fit=crop' }}"
+                    src="{{ \App\Support\HotelImage::url($hallImages[0] ?? null, 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=1170&auto=format&fit=crop') }}"
                     alt="{{ $hall->name }}" fetchpriority="high" decoding="async" />
             </div>
             @for ($i = 1; $i <= 4; $i++)
                 @if (isset($hallImages[$i]) && $hallImages[$i])
                     <div class="hidden h-full w-full md:block">
                         <img class="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
-                            src="{{ \Illuminate\Support\Facades\Storage::url($hallImages[$i]) }}"
+                            src="{{ \App\Support\HotelImage::url($hallImages[$i]) }}"
                             alt="{{ $hall->name }}" loading="lazy" decoding="async" />
                     </div>
                 @endif
@@ -119,9 +119,11 @@
                             </div>
                             <div>
                                 <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Jenis acara</label>
-                                <input type="text" name="event_type" placeholder="Pernikahan / Wisuda / Rapat corporate" required maxlength="100"
-                                    value="{{ old('event_type') }}"
-                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
+                                <select name="event_type" required
+                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold">
+                                    <option value="" disabled @selected(!old('event_type'))>Pilih jenis acara</option>
+                                    @include('partials.event-type-options')
+                                </select>
                             </div>
 
                             @include('partials.availability-status', ['ctaUrl' => route('halls.index'), 'ctaLabel' => 'Lihat gedung lain'])

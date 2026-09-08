@@ -21,14 +21,14 @@
         <div class="mt-6 grid h-[380px] grid-cols-1 gap-2 overflow-hidden rounded-2xl md:h-[520px] md:grid-cols-4 md:grid-rows-2">
             <div class="h-full w-full md:col-span-2 md:row-span-2">
                 <img class="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
-                    src="{{ $roomImages[0] ? \Illuminate\Support\Facades\Storage::url($roomImages[0]) : 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1170&auto=format&fit=crop' }}"
+                    src="{{ \App\Support\HotelImage::url($roomImages[0] ?? null, 'https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1170&auto=format&fit=crop') }}"
                     alt="{{ $roomType->name }}" fetchpriority="high" decoding="async" />
             </div>
             @for ($i = 1; $i <= 4; $i++)
                 @if (isset($roomImages[$i]) && $roomImages[$i])
                     <div class="hidden h-full w-full md:block">
                         <img class="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
-                            src="{{ \Illuminate\Support\Facades\Storage::url($roomImages[$i]) }}"
+                            src="{{ \App\Support\HotelImage::url($roomImages[$i]) }}"
                             alt="{{ $roomType->name }}" loading="lazy" decoding="async" />
                     </div>
                 @endif
@@ -113,12 +113,14 @@
                                 <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Check-in</label>
                                 <input type="date" name="check_in_date" required min="{{ now()->toDateString() }}"
                                     value="{{ old('check_in_date') }}"
+                                    data-booking-checkin
                                     class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
                             </div>
                             <div>
                                 <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Check-out</label>
                                 <input type="date" name="check_out_date" required min="{{ now()->toDateString() }}"
                                     value="{{ old('check_out_date') }}"
+                                    data-booking-checkout
                                     class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
                             </div>
                             <div>

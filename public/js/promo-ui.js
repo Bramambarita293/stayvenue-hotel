@@ -24,7 +24,7 @@
             const h = Math.floor((diff % 86400000) / 3600000);
             const m = Math.floor((diff % 3600000) / 60000);
             const s = Math.floor((diff % 60000) / 1000);
-            el.textContent = d > 0 ? `${d}h : ${pad(h)} : ${pad(m)} : ${pad(s)}` : `${pad(h)} : ${pad(m)} : ${pad(s)}`;
+            el.textContent = d > 0 ? `${d} hari : ${pad(h)} : ${pad(m)} : ${pad(s)}` : `${pad(h)} : ${pad(m)} : ${pad(s)}`;
         });
     };
     tickCountdowns();

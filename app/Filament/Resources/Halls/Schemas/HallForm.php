@@ -42,7 +42,7 @@ class HallForm
                             ->image()
                             ->multiple()
                             ->reorderable()
-                            ->disk('public')
+                            ->disk('s3')
                             ->directory('halls')
                             ->columnSpanFull(),
 

@@ -1,5 +1,5 @@
-// Hero 3D "Golden Hour Lobby" — Three.js via jsDelivr, prosedural, tanpa aset binary.
-// Skenario: gold-dust particles + emblem ring + wave floor di atas foto hero existing.
+﻿// Hero 3D "Navy Hour Lobby" â€” Three.js via jsDelivr, prosedural, tanpa aset binary.
+// Skenario: light-dust particles + emblem ring + wave floor di atas foto hero existing.
 // Gagal aman: canvas tetap transparan, foto hero tetap tampil.
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
@@ -27,10 +27,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
     camera.position.set(0, 1.4, 9);
 
-    const GOLD = 0x5b8def;
-    const GOLD_DIM = 0x1e3a8a;
+    const ACCENT = 0x5b8def;
+    const ACCENT_DIM = 0x1e3a8a;
 
-    // 1. Gold dust particles
+    // 1. Light dust particles
     const COUNT = isMobile ? 220 : 650;
     const pos = new Float32Array(COUNT * 3);
     const speed = new Float32Array(COUNT);
@@ -43,7 +43,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     const pGeo = new THREE.BufferGeometry();
     pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     const pMat = new THREE.PointsMaterial({
-        color: GOLD, size: 0.045, transparent: true, opacity: 0.75,
+        color: ACCENT, size: 0.045, transparent: true, opacity: 0.75,
         blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
     });
     const dust = new THREE.Points(pGeo, pMat);
@@ -53,16 +53,16 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
     const emblem = new THREE.Group();
     const ring1 = new THREE.Mesh(
         new THREE.TorusGeometry(1.5, 0.02, 12, 90),
-        new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.55 })
+        new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.55 })
     );
     const ring2 = new THREE.Mesh(
         new THREE.TorusGeometry(1.05, 0.015, 12, 80),
-        new THREE.MeshBasicMaterial({ color: GOLD_DIM, transparent: true, opacity: 0.5 })
+        new THREE.MeshBasicMaterial({ color: ACCENT_DIM, transparent: true, opacity: 0.5 })
     );
     ring2.rotation.x = Math.PI / 3;
     const core = new THREE.Mesh(
         new THREE.IcosahedronGeometry(0.42, 0),
-        new THREE.MeshBasicMaterial({ color: GOLD, wireframe: true, transparent: true, opacity: 0.7 })
+        new THREE.MeshBasicMaterial({ color: ACCENT, wireframe: true, transparent: true, opacity: 0.7 })
     );
     emblem.add(ring1, ring2, core);
     emblem.position.set(isMobile ? 0 : 3.4, 1.6, -1.5);
@@ -70,7 +70,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 
     // 3. Wave floor
     const waveGeo = new THREE.PlaneGeometry(26, 10, 60, 20);
-    const waveMat = new THREE.MeshBasicMaterial({ color: GOLD_DIM, wireframe: true, transparent: true, opacity: 0.16 });
+    const waveMat = new THREE.MeshBasicMaterial({ color: ACCENT_DIM, wireframe: true, transparent: true, opacity: 0.16 });
     const wave = new THREE.Mesh(waveGeo, waveMat);
     wave.rotation.x = -Math.PI / 2.4;
     wave.position.y = -1.8;

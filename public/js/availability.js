@@ -132,5 +132,28 @@
             el.addEventListener('change', debounced);
             el.addEventListener('input', debounced);
         });
+        // Anti double-submit: kunci tombol saat form terkirim (backend tetap idempoten).
+        form.addEventListener('submit', () => {
+            const submit = form.querySelector('[data-availability-submit]');
+            if (submit) {
+                submit.disabled = true;
+                submit.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        });
+
+        // Check-out minimal H+1 dari check-in (berlaku semua form kamar).
+        const checkin = form.querySelector('[data-booking-checkin]');
+        const checkout = form.querySelector('[data-booking-checkout]');
+        if (checkin && checkout) {
+            const syncMin = () => {
+                if (!checkin.value) return;
+                const next = new Date(checkin.value + 'T00:00:00');
+                next.setDate(next.getDate() + 1);
+                checkout.min = next.toISOString().slice(0, 10);
+                if (checkout.value && checkout.value <= checkin.value) checkout.value = '';
+            };
+            checkin.addEventListener('change', syncMin);
+            syncMin();
+        }
     });
 })();

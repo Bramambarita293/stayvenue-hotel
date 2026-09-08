@@ -40,6 +40,14 @@
                     class="mt-4 block text-center text-xs font-medium text-stone transition-colors hover:text-gold-soft">
                     Bayar nanti (kembali ke riwayat)
                 </a>
+
+                <form action="{{ route('booking.refresh', $reservation->reservation_code) }}" method="POST" class="mt-2">
+                    @csrf
+                    <button type="submit"
+                        class="block w-full text-center text-xs font-medium text-stone transition-colors hover:text-gold-soft">
+                        Token bermasalah? Minta link pembayaran baru
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -58,12 +66,17 @@
             }
 
             @if (isset($payment) && $payment->snap_token)
+                if (typeof window.snap === 'undefined' || !window.snap.pay) {
+                    alert("Skrip pembayaran Midtrans gagal dimuat (periksa koneksi/adblock), lalu coba lagi.");
+                    return;
+                }
+
                 payButton.disabled = true;
                 payButton.classList.add('opacity-50', 'cursor-not-allowed');
                 payButton.innerText = 'Memuat pembayaran...';
                 isSnapOpen = true;
 
-                window.snap.pay('{{ $payment->snap_token }}', {
+                window.snap.pay(@json($payment->snap_token), {
                     onSuccess: function (result) {
                         isSnapOpen = false;
                         window.location.href = "{{ route('user.reservations') }}";

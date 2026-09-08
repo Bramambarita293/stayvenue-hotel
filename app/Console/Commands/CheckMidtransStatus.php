@@ -19,7 +19,7 @@ class CheckMidtransStatus extends Command
     public function handle()
     {
         Config::$serverKey = config('services.midtrans.server_key');
-        Config::$isProduction = config('services.midtrans.is_production');
+        Config::$isProduction = config('services.midtrans.is_production', false);
 
         // Cari reservasi pending yang umurnya lebih dari 24 jam
         $reservations = Reservation::with(['roomBooking', 'hallBooking', 'payments'])
@@ -31,42 +31,71 @@ class CheckMidtransStatus extends Command
 
         foreach ($reservations as $reservation) {
             try {
-                $payment = $reservation->payments->where('status', 'PENDING')->first();
+                // Sertakan CHALLENGE agar transaksi fraud-review ikut rekonsiliasi.
+                $payment = $reservation->payments->whereIn('status', ['PENDING', 'CHALLENGE'])->first();
+
+                // Tanpa transaction_id valid JANGAN cancel: order belum tentu ada di Midtrans.
+                // Kecuali payment INITIATED basi (>1 jam): Snap tak pernah terbit -> yatim, bersihkan.
+                if (! $payment || ! $payment->transaction_id) {
+                    $staleInitiated = $reservation->payments
+                        ->where('status', 'INITIATED')
+                        ->where('created_at', '<', now()->subHour())
+                        ->first();
+
+                    if ($staleInitiated) {
+                        $this->cancelReservationAndReleaseInventory($reservation, $staleInitiated, 'FAILED');
+                        $this->warn("Reservasi {$reservation->reservation_code} dibatalkan (INITIATED basi).");
+
+                        continue;
+                    }
+
+                    Log::warning("midtrans:check-pending lewati {$reservation->reservation_code}: tanpa transaction_id.");
+                    $this->warn("Reservasi {$reservation->reservation_code} dilewati (tanpa transaction_id).");
+
+                    continue;
+                }
 
                 // Query status WAJIB memakai order_id Snap yang persis
                 // (tersimpan di payments.transaction_id), bukan reservation_code.
-                $orderId = $payment?->transaction_id ?: $reservation->reservation_code;
+                $orderId = $payment->transaction_id;
                 $statusResponse = Transaction::status($orderId);
                 $transactionStatus = $statusResponse->transaction_status ?? null;
+                $fraudStatus = $statusResponse->fraud_status ?? null;
 
                 if (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
                     $this->cancelReservationAndReleaseInventory($reservation, $payment, $transactionStatus === 'expire' ? 'EXPIRED' : 'FAILED');
                     $this->warn("Reservasi {$reservation->reservation_code} dibatalkan (Expired/Cancel).");
-                } elseif (in_array($transactionStatus, ['settlement', 'capture'])) {
-                    DB::transaction(function () use ($reservation, $payment) {
+                } elseif ($transactionStatus === 'settlement' || ($transactionStatus === 'capture' && $fraudStatus === 'accept')) {
+                    DB::transaction(function () use ($reservation, $payment, $statusResponse) {
                         $fresh = Reservation::whereKey($reservation->id)->lockForUpdate()->first();
-                        if (!$fresh || $fresh->status !== 'PENDING_PAYMENT') {
+                        if (! $fresh || $fresh->status !== 'PENDING_PAYMENT') {
                             return;
                         }
 
                         $fresh->update(['status' => 'CONFIRMED']);
                         $payment?->update([
-                            'status'   => 'SUCCESS',
-                            'paid_at'  => now(),
+                            'status' => 'SUCCESS',
+                            'payment_method' => $statusResponse->payment_type ?? $payment->payment_method,
+                            'paid_at' => now(),
                         ]);
                     });
                     $this->info("Reservasi {$reservation->reservation_code} disahkan (Settled).");
+                } elseif ($transactionStatus === 'capture' && $fraudStatus === 'challenge') {
+                    $payment->update(['status' => 'CHALLENGE']);
+                    $this->info("Reservasi {$reservation->reservation_code} dalam CHALLENGE.");
                 }
             } catch (Throwable $e) {
-                // 404 = order tidak pernah ada / token expired tanpa transaksi.
+                // 404 pada order_id valid = order hilang di Midtrans -> cancel.
+                // Error lain (jaringan/rate-limit) JANGAN cancel, cukup log.
                 if ((int) $e->getCode() === 404 || str_contains($e->getMessage(), '404')) {
-                    $this->cancelReservationAndReleaseInventory($reservation, $reservation->payments->where('status', 'PENDING')->first(), 'EXPIRED');
+                    $this->cancelReservationAndReleaseInventory($reservation, $reservation->payments->whereIn('status', ['PENDING', 'CHALLENGE'])->first(), 'EXPIRED');
                     $this->warn("Reservasi {$reservation->reservation_code} dibatalkan (404 - Not Found di Midtrans).");
 
                     continue;
                 }
 
                 Log::error("midtrans:check-pending gagal untuk {$reservation->reservation_code}: {$e->getMessage()}");
+                $this->warn("Reservasi {$reservation->reservation_code} dilewati (error API).");
             }
         }
     }

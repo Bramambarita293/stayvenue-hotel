@@ -72,23 +72,23 @@
                     <div>
                         <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-soft">Accommodation</p>
                         <p class="mt-1 font-display text-2xl font-medium text-ink md:text-3xl">
-                            {{ $reservation->roomBooking->roomType->name ?? 'Room' }}
+                            {{ $reservation->roomBooking->roomType?->name ?? 'Room' }}
                         </p>
-                        <p class="mt-1 text-xs text-stone">Jumlah: {{ $reservation->roomBooking->number_of_rooms }} kamar</p>
+                        <p class="mt-1 text-xs text-stone">Jumlah: {{ $reservation->roomBooking->number_of_rooms ?? '-' }} kamar</p>
                     </div>
                     <div class="mt-7 grid grid-cols-2 gap-6">
                         <div>
                             <p class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-soft">
                                 <span class="material-symbols-outlined text-[18px]">calendar_today</span> Check-in
                             </p>
-                            <p class="mt-1.5 font-semibold text-ink">{{ \Carbon\Carbon::parse($reservation->roomBooking->check_in_date)->format('d M Y') }}</p>
+                            <p class="mt-1.5 font-semibold text-ink">{{ $reservation->roomBooking->check_in_date ? \Carbon\Carbon::parse($reservation->roomBooking->check_in_date)->format('d M Y') : '-' }}</p>
                             <p class="mt-0.5 text-xs text-stone">Dari jam 14:00 WIB</p>
                         </div>
                         <div>
                             <p class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-soft">
                                 <span class="material-symbols-outlined text-[18px]">calendar_month</span> Check-out
                             </p>
-                            <p class="mt-1.5 font-semibold text-ink">{{ \Carbon\Carbon::parse($reservation->roomBooking->check_out_date)->format('d M Y') }}</p>
+                            <p class="mt-1.5 font-semibold text-ink">{{ $reservation->roomBooking->check_out_date ? \Carbon\Carbon::parse($reservation->roomBooking->check_out_date)->format('d M Y') : '-' }}</p>
                             <p class="mt-0.5 text-xs text-stone">Sebelum jam 12:00 WIB</p>
                         </div>
                     </div>
@@ -96,31 +96,31 @@
                     <div>
                         <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-soft">Venue &amp; event</p>
                         <p class="mt-1 font-display text-2xl font-medium text-ink md:text-3xl">
-                            {{ $reservation->hallBooking->hall->name ?? 'Event Hall' }}
+                            {{ $reservation->hallBooking->hall?->name ?? 'Event Hall' }}
                         </p>
-                        <p class="mt-1 text-xs text-stone">Jenis acara: {{ $reservation->hallBooking->event_type }}</p>
+                        <p class="mt-1 text-xs text-stone">Jenis acara: {{ $reservation->hallBooking->event_type_label }}</p>
                     </div>
                     <div class="mt-7 grid grid-cols-2 gap-6">
                         <div>
                             <p class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-soft">
                                 <span class="material-symbols-outlined text-[18px]">event</span> Tanggal acara
                             </p>
-                            <p class="mt-1.5 font-semibold text-ink">{{ \Carbon\Carbon::parse($reservation->hallBooking->event_date)->format('d M Y') }}</p>
+                            <p class="mt-1.5 font-semibold text-ink">{{ $reservation->hallBooking->event_date ? \Carbon\Carbon::parse($reservation->hallBooking->event_date)->format('d M Y') : '-' }}</p>
                         </div>
                         <div>
                             <p class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-soft">
                                 <span class="material-symbols-outlined text-[18px]">schedule</span> Sesi acara
                             </p>
-                            <p class="mt-1.5 font-semibold text-ink">{{ $reservation->hallBooking->session->session_name ?? 'Standard Session' }}</p>
+                            <p class="mt-1.5 font-semibold text-ink">{{ $reservation->hallBooking->session?->session_name ?? 'Standard Session' }}</p>
                         </div>
                     </div>
                 @endif
 
                 <div class="mt-10">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-soft">Metode pembayaran</p>
-                    <p class="mt-1 font-semibold uppercase text-ink">{{ $reservation->payments->first()->payment_method ?? 'MIDTRANS' }}</p>
+                    <p class="mt-1 font-semibold uppercase text-ink">{{ $reservation->payments->first()?->payment_method ?? 'MIDTRANS' }}</p>
                     <p class="mt-0.5 text-xs text-stone">
-                        Lunas pada {{ $reservation->payments->first()->paid_at ? \Carbon\Carbon::parse($reservation->payments->first()->paid_at)->format('d M Y  H:i') : '-' }}
+                        Lunas pada {{ $reservation->payments->first()?->paid_at ? \Carbon\Carbon::parse($reservation->payments->first()->paid_at)->format('d M Y  H:i') : '-' }}
                     </p>
                 </div>
 
