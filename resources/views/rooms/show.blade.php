@@ -9,7 +9,7 @@
     @endphp
 
     <section class="mx-auto max-w-container px-5 pt-28 md:px-8">
-        <nav class="flex items-center gap-2 text-xs text-stone">
+        <nav class="flex items-center gap-2 text-xs text-muted-text">
             <a href="/" class="transition-colors hover:text-ink">Home</a>
             <span>/</span>
             <a href="{{ route('rooms.index') }}" class="transition-colors hover:text-ink">Rooms</a>
@@ -43,41 +43,41 @@
                 <p class="eyebrow">Curated stays</p>
                 <h1 class="mt-3 font-display text-4xl font-medium tracking-tight text-ink md:text-5xl">{{ $roomType->name }}</h1>
 
-                <div class="mt-6 flex flex-wrap gap-x-8 gap-y-3 border-b border-line/70 pb-8 text-sm text-stone">
+                <div class="mt-6 flex flex-wrap gap-x-8 gap-y-3 border-b border-border/70 pb-8 text-sm text-muted-text">
                     <span class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[20px] text-gold">person</span>
+                        <span class="material-symbols-outlined text-[20px] text-navy">person</span>
                         Up to {{ $roomType->max_guests }} guests
                     </span>
                     <span class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[20px] text-gold">hotel</span>
+                        <span class="material-symbols-outlined text-[20px] text-navy">hotel</span>
                         {{ $roomType->total_inventory }} units available
                     </span>
                     <span class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[20px] text-gold">payments</span>
+                        <span class="material-symbols-outlined text-[20px] text-navy">payments</span>
                         Rp {{ number_format($roomType->base_price, 0, ',', '.') }} / night
                     </span>
                 </div>
 
                 <h2 class="mt-8 font-display text-2xl font-medium text-ink">About this room</h2>
-                <p class="mt-4 max-w-2xl text-sm leading-relaxed text-stone">{{ $roomType->description }}</p>
+                <p class="mt-4 max-w-2xl text-sm leading-relaxed text-muted-text">{{ $roomType->description }}</p>
 
-                <div class="mt-10 rounded-2xl border border-line/70 bg-surface-muted p-6 md:p-8">
+                <div class="mt-10 rounded-2xl border border-border/70 bg-muted p-6 md:p-8">
                     <h2 class="font-display text-2xl font-medium text-ink">Good to know</h2>
                     <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
                         <div>
-                            <span class="material-symbols-outlined text-[22px] text-gold">schedule</span>
+                            <span class="material-symbols-outlined text-[22px] text-navy">schedule</span>
                             <p class="mt-2 text-sm font-semibold text-ink">Check-in / out</p>
-                            <p class="mt-1 text-xs leading-relaxed text-stone">Check-in from 14:00<br />Check-out by 12:00</p>
+                            <p class="mt-1 text-xs leading-relaxed text-muted-text">Check-in from 14:00<br />Check-out by 12:00</p>
                         </div>
                         <div>
-                            <span class="material-symbols-outlined text-[22px] text-gold">shield_check</span>
+                            <span class="material-symbols-outlined text-[22px] text-navy">shield_check</span>
                             <p class="mt-2 text-sm font-semibold text-ink">Cancellation</p>
-                            <p class="mt-1 text-xs leading-relaxed text-stone">Free cancellation up to 48 hours before check-in.</p>
+                            <p class="mt-1 text-xs leading-relaxed text-muted-text">Free cancellation up to 48 hours before check-in.</p>
                         </div>
                         <div>
-                            <span class="material-symbols-outlined text-[22px] text-gold">support_agent</span>
+                            <span class="material-symbols-outlined text-[22px] text-navy">support_agent</span>
                             <p class="mt-2 text-sm font-semibold text-ink">Front desk</p>
-                            <p class="mt-1 text-xs leading-relaxed text-stone">Concierge &amp; room service available 24/7.</p>
+                            <p class="mt-1 text-xs leading-relaxed text-muted-text">Concierge &amp; room service available 24/7.</p>
                         </div>
                     </div>
                 </div>
@@ -85,11 +85,11 @@
 
             <!-- Booking card -->
             <div class="lg:col-span-1">
-                <div class="rounded-2xl border border-line/70 bg-surface p-7 shadow-card lg:sticky lg:top-28">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-soft">From</p>
+                <div class="rounded-2xl border border-border/70 bg-surface p-7 shadow-card lg:sticky lg:top-28">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-navy-soft">From</p>
                     <p class="mt-1 font-display text-3xl font-semibold text-ink">
                         Rp {{ number_format($roomType->base_price, 0, ',', '.') }}
-                        <span class="font-body text-sm font-normal text-stone">/ night</span>
+                        <span class="font-body text-sm font-normal text-muted-text">/ night</span>
                     </p>
 
                     @include('partials.booking-error')
@@ -98,9 +98,9 @@
                         <div class="mt-7 rounded-xl border border-danger/20 bg-danger/5 p-5 text-center">
                             <span class="material-symbols-outlined text-4xl text-danger/60">hotel_class</span>
                             <p class="mt-2 font-display text-xl text-ink">Tipe kamar ini sedang penuh</p>
-                            <p class="mt-1 text-sm text-stone">Silakan pilih tipe lain yang tersedia.</p>
+                            <p class="mt-1 text-sm text-muted-text">Silakan pilih tipe lain yang tersedia.</p>
                             <a href="{{ route('rooms.index') }}"
-                                class="mt-4 inline-block rounded-full bg-ink px-6 py-3 text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Lihat kamar lain</a>
+                                class="mt-4 inline-block rounded-full bg-ink px-6 py-3 text-sm font-semibold text-background transition-colors hover:bg-navy-dark hover:text-white">Lihat kamar lain</a>
                         </div>
                     @else
                         <form action="{{ route('booking.room.checkout') }}" method="POST" class="mt-7 space-y-4"
@@ -110,38 +110,38 @@
                             @csrf
                             <input type="hidden" name="room_type_id" value="{{ $roomType->id }}">
                             <div>
-                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Check-in</label>
+                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-muted-text">Check-in</label>
                                 <input type="date" name="check_in_date" required min="{{ now()->toDateString() }}"
                                     value="{{ old('check_in_date') }}"
                                     data-booking-checkin
-                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
+                                    class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-navy" />
                             </div>
                             <div>
-                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Check-out</label>
+                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-muted-text">Check-out</label>
                                 <input type="date" name="check_out_date" required min="{{ now()->toDateString() }}"
                                     value="{{ old('check_out_date') }}"
                                     data-booking-checkout
-                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
+                                    class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-navy" />
                             </div>
                             <div>
-                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Rooms (max 5)</label>
+                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-muted-text">Rooms (max 5)</label>
                                 <input type="number" name="number_of_rooms" value="{{ old('number_of_rooms', 1) }}" min="1" max="5"
-                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
+                                    class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-navy" />
                             </div>
 
                             @include('partials.availability-status', ['ctaUrl' => route('rooms.index'), 'ctaLabel' => 'Lihat kamar lain'])
 
                             @auth
                                 <button type="submit" data-availability-submit
-                                    class="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Book this room</button>
+                                    class="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-background transition-colors hover:bg-navy-dark hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Book this room</button>
                             @else
                                 <a href="{{ route('login') }}"
-                                    class="block w-full rounded-full bg-ink px-6 py-3.5 text-center text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Sign in to book</a>
+                                    class="block w-full rounded-full bg-ink px-6 py-3.5 text-center text-sm font-semibold text-background transition-colors hover:bg-navy-dark hover:text-white">Sign in to book</a>
                             @endauth
                         </form>
                     @endif
 
-                    <p class="mt-4 text-center text-xs text-stone">Free cancellation available up to 48 hours before check-in.</p>
+                    <p class="mt-4 text-center text-xs text-muted-text">Free cancellation available up to 48 hours before check-in.</p>
                 </div>
             </div>
         </div>

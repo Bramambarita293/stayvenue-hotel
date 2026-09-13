@@ -4,11 +4,11 @@
 @endphp
 
 @if ($activePromos->isNotEmpty())
-    <div class="overflow-hidden border-y border-line/70 bg-onyx py-3" aria-label="Promosi berjalan">
+    <div class="overflow-hidden border-y border-border/70 bg-onyx py-3" aria-label="Promosi berjalan">
         <div class="promo-marquee flex w-max items-center gap-10 whitespace-nowrap text-sm text-background/90">
             @foreach ($activePromos->merge($activePromos)->take($activePromos->count() * 2) as $promo)
                 <span class="flex items-center gap-3">
-                    <span class="material-symbols-outlined text-[16px] text-gold">verified</span>
+                    <span class="material-symbols-outlined text-[16px] text-navy">verified</span>
                     <span class="font-semibold">{{ $promo['title'] }}</span>
                     <span class="text-background/50">·</span>
                     <span class="text-background/70">{{ $promo['badge'] }}</span>

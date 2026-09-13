@@ -37,6 +37,17 @@ class CheckMidtransStatus extends Command
                 // Tanpa transaction_id valid JANGAN cancel: order belum tentu ada di Midtrans.
                 // Kecuali payment INITIATED basi (>1 jam): Snap tak pernah terbit -> yatim, bersihkan.
                 if (! $payment || ! $payment->transaction_id) {
+                    $hasNewerValidPayment = $reservation->payments()
+                        ->whereIn('status', ['PENDING', 'CHALLENGE'])
+                        ->whereNotNull('transaction_id')
+                        ->exists();
+
+                    if ($hasNewerValidPayment) {
+                        Log::info("midtrans:check-pending lewati {$reservation->reservation_code}: ada payment valid lebih baru.");
+                        $this->warn("Reservasi {$reservation->reservation_code} dilewati (ada payment valid lebih baru).");
+                        continue;
+                    }
+
                     $staleInitiated = $reservation->payments
                         ->where('status', 'INITIATED')
                         ->where('created_at', '<', now()->subHour())
@@ -81,8 +92,12 @@ class CheckMidtransStatus extends Command
                     });
                     $this->info("Reservasi {$reservation->reservation_code} disahkan (Settled).");
                 } elseif ($transactionStatus === 'capture' && $fraudStatus === 'challenge') {
-                    $payment->update(['status' => 'CHALLENGE']);
-                    $this->info("Reservasi {$reservation->reservation_code} dalam CHALLENGE.");
+                    if ($payment->status !== 'SUCCESS') {
+                        $payment->update(['status' => 'CHALLENGE']);
+                        $this->info("Reservasi {$reservation->reservation_code} dalam CHALLENGE.");
+                    } else {
+                        $this->info("Reservasi {$reservation->reservation_code} sudah SUCCESS, skip CHALLENGE.");
+                    }
                 }
             } catch (Throwable $e) {
                 // 404 pada order_id valid = order hilang di Midtrans -> cancel.

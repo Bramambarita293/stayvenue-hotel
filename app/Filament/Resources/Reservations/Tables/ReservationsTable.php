@@ -34,16 +34,63 @@ class ReservationsTable
                         'HALL' => 'warning',
                     }),
 
+                TextColumn::make('roomBooking.roomType.name')
+                    ->label('Tipe/Kamar')
+                    ->placeholder('-')
+                    ->limit(20),
+
+                TextColumn::make('hallBooking.hall.name')
+                    ->label('Gedung')
+                    ->placeholder('-')
+                    ->limit(20),
+
+                TextColumn::make('roomBooking.number_of_rooms')
+                    ->label('Jml Kamar')
+                    ->placeholder('-')
+                    ->sortable(),
+
+                TextColumn::make('roomBooking.check_in_date')
+                    ->label('Check-In')
+                    ->date('d M Y')
+                    ->placeholder('-')
+                    ->sortable(),
+
+                TextColumn::make('roomBooking.check_out_date')
+                    ->label('Check-Out')
+                    ->date('d M Y')
+                    ->placeholder('-')
+                    ->sortable(),
+
+                TextColumn::make('hallBooking.event_date')
+                    ->label('Tgl Acara')
+                    ->date('d M Y')
+                    ->placeholder('-')
+                    ->sortable(),
+
+                TextColumn::make('hallBooking.event_type')
+                    ->label('Jenis Acara')
+                    ->formatStateUsing(fn($state) => \App\Models\HallBooking::EVENT_TYPE_LABELS[$state] ?? $state)
+                    ->placeholder('-'),
+
                 TextColumn::make('roomBooking.assigned_room_number')
                     ->label('No. Kamar')
                     ->placeholder('-')
                     ->badge()
                     ->color('primary'),
 
+                TextColumn::make('guest_phone')
+                    ->label('Telepon')
+                    ->placeholder('-'),
+
                 TextColumn::make('total_amount')
                     ->label('Total Biaya')
                     ->money('IDR')
                     ->sortable(),
+
+                TextColumn::make('payments.payment_method')
+                    ->label('Metode Bayar')
+                    ->placeholder('-')
+                    ->limit(10),
 
                 TextColumn::make('status')
                     ->badge()
@@ -207,7 +254,19 @@ class ReservationsTable
                             ->success()
                             ->send();
                     })
-                    ->visible(fn($record) => $record->reservation_type === 'ROOM' && $record->status === 'CHECKED_OUT'),
+                    ->visible(function ($record) {
+                        if ($record->reservation_type !== 'ROOM' || $record->status !== 'CHECKED_OUT') {
+                            return false;
+                        }
+                        $roomBooking = $record->roomBooking;
+                        $room = null;
+                        if ($roomBooking?->room_id) {
+                            $room = \App\Models\Room::find($roomBooking->room_id);
+                        } elseif ($roomBooking?->assigned_room_number) {
+                            $room = \App\Models\Room::where('room_number', $roomBooking->assigned_room_number)->first();
+                        }
+                        return $room && $room->status === 'CLEANING';
+                    }),
             ]);
     }
 

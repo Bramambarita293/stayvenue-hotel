@@ -13,7 +13,9 @@ class EditRoom extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->requiresConfirmation()
+                ->modalDescription('Kamar yang sedang OCCUPIED tidak bisa dihapus.'),
         ];
     }
 

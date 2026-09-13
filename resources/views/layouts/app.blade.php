@@ -10,7 +10,7 @@
     @stack('head')
 </head>
 
-<body class="flex min-h-screen flex-col bg-background font-body text-ink antialiased selection:bg-gold/20">
+<body class="flex min-h-screen flex-col bg-background font-body text-ink antialiased selection:bg-navy/20">
     @include('partials.header')
 
     <main class="grow">

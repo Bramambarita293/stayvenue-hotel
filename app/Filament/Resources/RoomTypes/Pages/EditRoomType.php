@@ -13,7 +13,9 @@ class EditRoomType extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->requiresConfirmation()
+                ->modalDescription('Tipe kamar yang masih memiliki booking tidak bisa dihapus.'),
         ];
     }
 }

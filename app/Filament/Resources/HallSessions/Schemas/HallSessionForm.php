@@ -6,7 +6,7 @@ use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
-
+use Illuminate\Validation\ValidationException;
 
 class HallSessionForm
 {
@@ -29,7 +29,16 @@ class HallSessionForm
                         TimePicker::make('end_time')
                             ->label('Jam Selesai')
                             ->seconds(false)
-                            ->required(),
+                            ->required()
+                            ->afterStateUpdated(function ($set, $get, ?string $operation, $state) {
+                                $start = $get('start_time');
+                                if ($start && $state && $state <= $start) {
+                                    $set('end_time', null);
+                                    throw ValidationException::withMessages([
+                                        'end_time' => 'Jam selesai harus lebih besar dari jam mulai.',
+                                    ]);
+                                }
+                            }),
                     ])->columns(3),
             ]);
     }

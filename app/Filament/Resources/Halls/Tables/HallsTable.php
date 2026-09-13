@@ -6,6 +6,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Table;
+use Filament\Actions\DeleteAction;
 
 class HallsTable
 {
@@ -19,7 +20,6 @@ class HallsTable
                     ->stacked()
                     ->limit(1)
                     ->limitedRemainingText(),
-
 
                 TextColumn::make('name')
                     ->label('Nama Gedung')
@@ -35,9 +35,24 @@ class HallsTable
                     ->money('IDR')
                     ->sortable(),
 
+                TextColumn::make('eventPackages_count')
+                    ->label('Paket')
+                    ->counts('eventPackages')
+                    ->sortable(),
+
+                TextColumn::make('hallBookings_count')
+                    ->label('Booking')
+                    ->counts('hallBookings')
+                    ->sortable(),
+
                 IconColumn::make('is_active')
                     ->label('Status')
                     ->boolean(),
+            ])
+            ->actions([
+                DeleteAction::make()
+                    ->requiresConfirmation()
+                    ->modalDescription('Gedung yang masih memiliki booking tidak bisa dihapus.'),
             ]);
     }
 }

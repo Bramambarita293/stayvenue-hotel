@@ -9,7 +9,7 @@
     @endphp
 
     <section class="mx-auto max-w-container px-5 pt-28 md:px-8">
-        <nav class="flex items-center gap-2 text-xs text-stone">
+        <nav class="flex items-center gap-2 text-xs text-muted-text">
             <a href="/" class="transition-colors hover:text-ink">Home</a>
             <span>/</span>
             <a href="{{ route('halls.index') }}" class="transition-colors hover:text-ink">Venues</a>
@@ -43,33 +43,33 @@
                 <p class="eyebrow">Unforgettable gatherings</p>
                 <h1 class="mt-3 font-display text-4xl font-medium tracking-tight text-ink md:text-5xl">{{ $hall->name }}</h1>
 
-                <div class="mt-6 flex flex-wrap gap-x-8 gap-y-3 border-b border-line/70 pb-8 text-sm text-stone">
+                <div class="mt-6 flex flex-wrap gap-x-8 gap-y-3 border-b border-border/70 pb-8 text-sm text-muted-text">
                     <span class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[20px] text-gold">groups</span>
+                        <span class="material-symbols-outlined text-[20px] text-navy">groups</span>
                         Up to {{ $hall->capacity_pax }} pax
                     </span>
                     <span class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[20px] text-gold">payments</span>
+                        <span class="material-symbols-outlined text-[20px] text-navy">payments</span>
                         Rp {{ number_format($hall->base_rental_price, 0, ',', '.') }} / session
                     </span>
                 </div>
 
                 <h2 class="mt-8 font-display text-2xl font-medium text-ink">About this venue</h2>
-                <p class="mt-4 max-w-2xl text-sm leading-relaxed text-stone">{{ $hall->description }}</p>
+                <p class="mt-4 max-w-2xl text-sm leading-relaxed text-muted-text">{{ $hall->description }}</p>
 
                 @if (isset($sessions) && count($sessions) > 0)
                     <h2 class="mt-10 font-display text-2xl font-medium text-ink">Available sessions</h2>
                     <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                         @foreach ($sessions as $session)
-                            <div class="flex items-center justify-between rounded-xl border border-line/70 bg-surface-muted px-5 py-4">
+                            <div class="flex items-center justify-between rounded-xl border border-border/70 bg-muted px-5 py-4">
                                 <div>
                                     <p class="text-sm font-semibold text-ink">{{ $session->session_name }}</p>
-                                    <p class="mt-1 text-xs text-stone">
+                                    <p class="mt-1 text-xs text-muted-text">
                                         {{ \Carbon\Carbon::parse($session->start_time)->format('H:i') }} –
                                         {{ \Carbon\Carbon::parse($session->end_time)->format('H:i') }} WIB
                                     </p>
                                 </div>
-                                <span class="material-symbols-outlined text-gold">schedule</span>
+                                <span class="material-symbols-outlined text-navy">schedule</span>
                             </div>
                         @endforeach
                     </div>
@@ -78,22 +78,22 @@
 
             <!-- Reservation card -->
             <div class="lg:col-span-1">
-                <div class="rounded-2xl border border-line/70 bg-surface p-7 shadow-card lg:sticky lg:top-28">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gold-soft">Base rental</p>
+                <div class="rounded-2xl border border-border/70 bg-surface p-7 shadow-card lg:sticky lg:top-28">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-navy-soft">Base rental</p>
                     <p class="mt-1 font-display text-3xl font-semibold text-ink">
                         Rp {{ number_format($hall->base_rental_price, 0, ',', '.') }}
-                        <span class="font-body text-sm font-normal text-stone">/ session</span>
+                        <span class="font-body text-sm font-normal text-muted-text">/ session</span>
                     </p>
 
                     @include('partials.booking-error')
 
                     @if (!isset($sessions) || count($sessions) === 0)
-                        <div class="mt-7 rounded-xl border border-line/70 bg-surface-muted p-5 text-center">
-                            <span class="material-symbols-outlined text-4xl text-stone/40">meeting_room</span>
+                        <div class="mt-7 rounded-xl border border-border/70 bg-muted p-5 text-center">
+                            <span class="material-symbols-outlined text-4xl text-muted-text/40">meeting_room</span>
                             <p class="mt-2 font-display text-xl text-ink">Belum ada sesi tersedia</p>
-                            <p class="mt-1 text-sm text-stone">Silakan cek kembali nanti.</p>
+                            <p class="mt-1 text-sm text-muted-text">Silakan cek kembali nanti.</p>
                             <a href="{{ route('halls.index') }}"
-                                class="mt-4 inline-block rounded-full bg-ink px-6 py-3 text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Lihat gedung lain</a>
+                                class="mt-4 inline-block rounded-full bg-ink px-6 py-3 text-sm font-semibold text-background transition-colors hover:bg-navy-dark hover:text-white">Lihat gedung lain</a>
                         </div>
                     @else
                         <form action="{{ route('booking.hall.checkout') }}" method="POST" class="mt-7 space-y-4"
@@ -103,24 +103,24 @@
                             @csrf
                             <input type="hidden" name="hall_id" value="{{ $hall->id }}">
                             <div>
-                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Tanggal acara</label>
+                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-muted-text">Tanggal acara</label>
                                 <input type="date" name="event_date" required min="{{ now()->toDateString() }}"
                                     value="{{ old('event_date') }}"
-                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold" />
+                                    class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-navy" />
                             </div>
                             <div>
-                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Sesi waktu</label>
+                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-muted-text">Sesi waktu</label>
                                 <select name="session_id" required
-                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold">
+                                    class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-navy">
                                     @foreach ($sessions as $session)
                                         <option value="{{ $session->id }}" @selected(old('session_id') == $session->id)>{{ $session->session_name }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-stone">Jenis acara</label>
+                                <label class="block text-[11px] font-semibold uppercase tracking-wider text-muted-text">Jenis acara</label>
                                 <select name="event_type" required
-                                    class="mt-1 w-full rounded-lg border border-line bg-background px-3 py-2.5 text-sm outline-none focus:border-gold">
+                                    class="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-navy">
                                     <option value="" disabled @selected(!old('event_type'))>Pilih jenis acara</option>
                                     @include('partials.event-type-options')
                                 </select>
@@ -130,15 +130,15 @@
 
                             @auth
                                 <button type="submit" data-availability-submit
-                                    class="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Sewa gedung ini</button>
+                                    class="w-full rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-background transition-colors hover:bg-navy-dark hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Sewa gedung ini</button>
                             @else
                                 <a href="{{ route('login') }}"
-                                    class="block w-full rounded-full bg-ink px-6 py-3.5 text-center text-sm font-semibold text-background transition-colors hover:bg-gold-soft hover:text-white">Sign in to book</a>
+                                    class="block w-full rounded-full bg-ink px-6 py-3.5 text-center text-sm font-semibold text-background transition-colors hover:bg-navy-dark hover:text-white">Sign in to book</a>
                             @endauth
                         </form>
                     @endif
 
-                    <p class="mt-4 text-center text-xs text-stone">Our event team will contact you to confirm final arrangements.</p>
+                    <p class="mt-4 text-center text-xs text-muted-text">Our event team will contact you to confirm final arrangements.</p>
                 </div>
             </div>
         </div>

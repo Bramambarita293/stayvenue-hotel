@@ -17,6 +17,11 @@ class ListReservations extends ListRecords
 
     protected function getTableQuery(): ?\Illuminate\Database\Eloquent\Builder
     {
-        return parent::getTableQuery()?->with(['roomBooking.roomType', 'hallBooking.hall', 'payments']);
+        return parent::getTableQuery()?->with([
+            'roomBooking.roomType',
+            'hallBooking.hall',
+            'hallBooking.session',
+            'payments',
+        ]);
     }
 }

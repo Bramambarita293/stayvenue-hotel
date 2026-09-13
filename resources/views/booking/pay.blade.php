@@ -4,27 +4,27 @@
 
 @section('content')
     <div class="flex min-h-screen items-center justify-center bg-background p-4">
-        <div class="w-full max-w-md overflow-hidden rounded-2xl border border-line/70 bg-surface shadow-card">
-            <div class="border-b border-line/70 bg-onyx px-8 py-7 text-center text-background">
-                <span class="material-symbols-outlined text-gold">payments</span>
+        <div class="w-full max-w-md overflow-hidden rounded-2xl border border-border/70 bg-surface shadow-card">
+            <div class="border-b border-border/70 bg-onyx px-8 py-7 text-center text-background">
+                <span class="material-symbols-outlined text-navy">payments</span>
                 <h1 class="mt-2 font-display text-3xl font-medium tracking-tight">
-                    {{ $site['name'] }}<span class="text-gold">.</span>
+                    {{ $site['name'] }}<span class="text-navy">.</span>
                 </h1>
                 <p class="mt-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-background/60">Selesaikan pembayaran Anda</p>
             </div>
 
             <div class="p-8">
-                <div class="space-y-3 rounded-xl bg-surface-muted p-5">
+                <div class="space-y-3 rounded-xl bg-muted p-5">
                     <div class="flex items-center justify-between text-sm">
-                        <span class="text-stone">Kode booking</span>
+                        <span class="text-muted-text">Kode booking</span>
                         <span class="font-mono font-bold text-ink">{{ $reservation->reservation_code }}</span>
                     </div>
-                    <div class="flex items-center justify-between border-t border-line/70 pt-3 text-sm">
-                        <span class="text-stone">Kategori</span>
+                    <div class="flex items-center justify-between border-t border-border/70 pt-3 text-sm">
+                        <span class="text-muted-text">Kategori</span>
                         <span class="font-semibold text-ink">{{ $reservation->reservation_type == 'ROOM' ? 'Kamar Hotel' : 'Sewa Gedung / Ballroom' }}</span>
                     </div>
-                    <div class="flex items-center justify-between border-t border-line/70 pt-3">
-                        <span class="text-sm text-stone">Total tagihan</span>
+                    <div class="flex items-center justify-between border-t border-border/70 pt-3">
+                        <span class="text-sm text-muted-text">Total tagihan</span>
                         <span class="font-display text-xl font-semibold text-ink">
                             Rp {{ number_format($reservation->total_amount, 0, ',', '.') }}
                         </span>
@@ -32,19 +32,19 @@
                 </div>
 
                 <button id="pay-button"
-                    class="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-ink px-6 py-4 text-sm font-semibold uppercase tracking-wider text-background transition-all hover:-translate-y-0.5 hover:bg-gold-soft hover:text-white">
+                    class="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-ink px-6 py-4 text-sm font-semibold uppercase tracking-wider text-background transition-all hover:-translate-y-0.5 hover:bg-navy-dark hover:text-white">
                     Bayar sekarang <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </button>
 
                 <a href="{{ route('user.reservations') }}"
-                    class="mt-4 block text-center text-xs font-medium text-stone transition-colors hover:text-gold-soft">
+                    class="mt-4 block text-center text-xs font-medium text-muted-text transition-colors hover:text-navy-soft">
                     Bayar nanti (kembali ke riwayat)
                 </a>
 
                 <form action="{{ route('booking.refresh', $reservation->reservation_code) }}" method="POST" class="mt-2">
                     @csrf
                     <button type="submit"
-                        class="block w-full text-center text-xs font-medium text-stone transition-colors hover:text-gold-soft">
+                        class="block w-full text-center text-xs font-medium text-muted-text transition-colors hover:text-navy-soft">
                         Token bermasalah? Minta link pembayaran baru
                     </button>
                 </form>

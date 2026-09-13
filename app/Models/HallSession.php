@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 
 class HallSession extends Model
 {
@@ -20,13 +22,26 @@ class HallSession extends Model
         ];
     }
 
-    public function hallBookings(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function hallBookings(): HasMany
     {
         return $this->hasMany(HallBooking::class, 'session_id');
     }
 
-    public function hallAvailabilities(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function hallAvailabilities(): HasMany
     {
         return $this->hasMany(HallAvailability::class, 'session_id');
+    }
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::deleting(function (HallSession $session) {
+            if ($session->hallBookings()->exists()) {
+                throw ValidationException::withMessages([
+                    'session' => 'Sesi tidak bisa dihapus karena masih memiliki booking terkait.',
+                ]);
+            }
+        });
     }
 }

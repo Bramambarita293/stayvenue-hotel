@@ -74,7 +74,6 @@ class Reservation extends Model
         if ($this->reservation_type === 'ROOM' && $this->roomBooking) {
             $roomBooking = $this->roomBooking;
 
-            // Guard tanggal invalid (check_out <= check_in) agar tidak loop liar.
             try {
                 $checkIn = Carbon::parse($roomBooking->check_in_date);
                 $checkOut = Carbon::parse($roomBooking->check_out_date)->subDay();
@@ -87,23 +86,34 @@ class Reservation extends Model
             }
 
             $dates = CarbonPeriod::create($checkIn, $checkOut);
+            $allReleased = true;
 
             foreach ($dates as $date) {
-                // Kunci baris inventory agar cancel konkuren + booking baru tidak interleave.
                 $row = RoomDailyInventory::where('room_type_id', $roomBooking->room_type_id)
                     ->where('date', $date->format('Y-m-d'))
                     ->lockForUpdate()
                     ->first();
 
-                if (! $row || $row->booked_count < $roomBooking->number_of_rooms) {
-                    \Illuminate\Support\Facades\Log::warning("releaseStock skip {$this->reservation_code} {$date->format('Y-m-d')}: booked_count tidak cukup.");
+                if (! $row) {
+                    \Illuminate\Support\Facades\Log::warning("releaseStock skip {$this->reservation_code} {$date->format('Y-m-d')}: inventory tidak ditemukan.");
+                    $allReleased = false;
+                    continue;
+                }
+
+                if ($row->booked_count < $roomBooking->number_of_rooms) {
+                    \Illuminate\Support\Facades\Log::warning("releaseStock skip {$this->reservation_code} {$date->format('Y-m-d')}: booked_count tidak cukup ({$row->booked_count} < {$roomBooking->number_of_rooms}).");
+                    $allReleased = false;
                     continue;
                 }
 
                 $row->decrement('booked_count', $roomBooking->number_of_rooms);
             }
 
-            $this->forceFill(['stock_released_at' => now()])->save();
+            if ($allReleased) {
+                $this->forceFill(['stock_released_at' => now()])->save();
+            } else {
+                \Illuminate\Support\Facades\Log::alert("releaseStock PARTIAL {$this->reservation_code}: beberapa tanggal gagal dilepas. Perlu manual intervention.");
+            }
         }
     }
 }

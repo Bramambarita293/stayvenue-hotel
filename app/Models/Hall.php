@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 
 class Hall extends Model
 {
@@ -36,5 +37,21 @@ class Hall extends Model
     public function hallAvailabilities(): HasMany
     {
         return $this->hasMany(HallAvailability::class);
+    }
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::deleting(function (Hall $hall) {
+            if ($hall->hallBookings()->exists()) {
+                throw ValidationException::withMessages([
+                    'hall' => 'Gedung tidak bisa dihapus karena masih memiliki booking terkait.',
+                ]);
+            }
+
+            $hall->eventPackages()->delete();
+            $hall->hallAvailabilities()->delete();
+        });
     }
 }

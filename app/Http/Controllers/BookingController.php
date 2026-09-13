@@ -195,11 +195,25 @@ class BookingController extends Controller
             return back()->withErrors(['check_in_date' => 'Gagal membuat pembayaran, silakan coba lagi.']);
         }
 
-        $payment->update([
-            'transaction_id' => $orderId,
-            'snap_token' => $snapToken,
-            'status' => 'PENDING',
-        ]);
+        try {
+            $payment->update([
+                'transaction_id' => $orderId,
+                'snap_token' => $snapToken,
+                'status' => 'PENDING',
+            ]);
+        } catch (Throwable $e) {
+            DB::transaction(function () use ($reservation, $payment) {
+                $fresh = Reservation::whereKey($reservation->id)->lockForUpdate()->first();
+                if ($fresh && $fresh->status === 'PENDING_PAYMENT') {
+                    $fresh->update(['status' => 'CANCELLED']);
+                    Payment::whereKey($payment->id)->update(['status' => 'FAILED']);
+                    $fresh->releaseStock();
+                }
+            });
+            report($e);
+
+            return back()->withErrors(['check_in_date' => 'Gagal menyimpan data pembayaran, silakan coba lagi.']);
+        }
 
         return redirect()->route('booking.pay', $reservation->reservation_code);
     }
@@ -229,52 +243,73 @@ class BookingController extends Controller
      */
     public function refreshPayment(string $code, MidtransService $midtransService)
     {
-        $reservation = Reservation::where('reservation_code', $code)
-            ->where('user_id', Auth::id())
-            ->where('status', 'PENDING_PAYMENT')
-            ->firstOrFail();
+        $result = DB::transaction(function () use ($code, $midtransService) {
+            $reservation = Reservation::where('reservation_code', $code)
+                ->where('user_id', Auth::id())
+                ->where('status', 'PENDING_PAYMENT')
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $payment = Payment::where('reservation_id', $reservation->id)
-            ->whereIn('status', ['PENDING', 'CHALLENGE', 'INITIATED'])
-            ->latest()
-            ->firstOrFail();
+            $hasActivePayment = $reservation->payments()
+                ->whereIn('status', ['PENDING', 'CHALLENGE'])
+                ->whereNotNull('transaction_id')
+                ->exists();
 
-        if ($payment->transaction_id) {
-            try {
-                $status = Transaction::status($payment->transaction_id);
-                $txnStatus = $status->transaction_status ?? null;
+            if ($hasActivePayment) {
+                return ['status' => 'active'];
+            }
 
-                if (! in_array($txnStatus, ['expire', 'cancel', 'deny'])) {
-                    return back()->with('error', 'Pembayaran sebelumnya masih aktif. Selesaikan pembayaran atau tunggu hingga kedaluwarsa.');
+            $payment = $reservation->payments()
+                ->whereIn('status', ['PENDING', 'CHALLENGE', 'INITIATED'])
+                ->latest()
+                ->firstOrFail();
+
+            if ($payment->transaction_id) {
+                try {
+                    $status = Transaction::status($payment->transaction_id);
+                    $txnStatus = $status->transaction_status ?? null;
+
+                    if (! in_array($txnStatus, ['expire', 'cancel', 'deny'])) {
+                        return ['status' => 'active'];
+                    }
+
+                    $payment->update(['status' => $txnStatus === 'expire' ? 'EXPIRED' : 'FAILED']);
+                } catch (Throwable $e) {
+                    report($e);
+
+                    return ['status' => 'error'];
                 }
+            }
 
-                // Tandai order lama mati agar webhook susulan tidak memprosesnya.
-                $payment->update(['status' => $txnStatus === 'expire' ? 'EXPIRED' : 'FAILED']);
+            try {
+                [$orderId, $snapToken] = $midtransService->createSnapToken($reservation, (float) $reservation->total_amount, 'FULL');
             } catch (Throwable $e) {
                 report($e);
 
-                return back()->withErrors(['payment' => 'Gagal memeriksa status pembayaran lama. Coba lagi.']);
+                return ['status' => 'error'];
             }
+
+            $reservation->payments()->create([
+                'transaction_id' => $orderId,
+                'payment_type' => 'FULL',
+                'amount' => $reservation->total_amount,
+                'payment_gateway' => 'MIDTRANS',
+                'snap_token' => $snapToken,
+                'status' => 'PENDING',
+            ]);
+
+            return ['status' => 'ok', 'reservation' => $reservation];
+        });
+
+        if ($result['status'] === 'active') {
+            return back()->with('error', 'Pembayaran sebelumnya masih aktif. Selesaikan pembayaran atau tunggu hingga kedaluwarsa.');
         }
 
-        try {
-            [$orderId, $snapToken] = $midtransService->createSnapToken($reservation, (float) $reservation->total_amount, 'FULL');
-        } catch (Throwable $e) {
-            report($e);
-
+        if ($result['status'] === 'error') {
             return back()->withErrors(['payment' => 'Gagal membuat pembayaran baru. Coba lagi.']);
         }
 
-        $reservation->payments()->create([
-            'transaction_id' => $orderId,
-            'payment_type' => 'FULL',
-            'amount' => $reservation->total_amount,
-            'payment_gateway' => 'MIDTRANS',
-            'snap_token' => $snapToken,
-            'status' => 'PENDING',
-        ]);
-
-        return redirect()->route('booking.pay', $reservation->reservation_code)
+        return redirect()->route('booking.pay', $result['reservation']->reservation_code)
             ->with('success', 'Link pembayaran baru telah dibuat.');
     }
 
@@ -415,11 +450,25 @@ class BookingController extends Controller
             return back()->withErrors(['event_date' => 'Gagal membuat pembayaran, silakan coba lagi.']);
         }
 
-        $payment->update([
-            'transaction_id' => $orderId,
-            'snap_token' => $snapToken,
-            'status' => 'PENDING',
-        ]);
+        try {
+            $payment->update([
+                'transaction_id' => $orderId,
+                'snap_token' => $snapToken,
+                'status' => 'PENDING',
+            ]);
+        } catch (Throwable $e) {
+            DB::transaction(function () use ($reservation, $payment) {
+                $fresh = Reservation::whereKey($reservation->id)->lockForUpdate()->first();
+                if ($fresh && $fresh->status === 'PENDING_PAYMENT') {
+                    $fresh->update(['status' => 'CANCELLED']);
+                    Payment::whereKey($payment->id)->update(['status' => 'FAILED']);
+                    $fresh->releaseStock();
+                }
+            });
+            report($e);
+
+            return back()->withErrors(['event_date' => 'Gagal menyimpan data pembayaran, silakan coba lagi.']);
+        }
 
         return redirect()->route('booking.pay', $reservation->reservation_code);
     }

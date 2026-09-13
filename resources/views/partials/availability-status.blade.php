@@ -5,6 +5,6 @@
     data-availability-status>
     <p class="font-semibold" data-availability-message></p>
     @if ($ctaUrl)
-        <a href="{{ $ctaUrl }}" data-availability-cta class="mt-1 hidden text-xs font-semibold text-gold-soft underline underline-offset-4">{{ $ctaLabel }}</a>
+        <a href="{{ $ctaUrl }}" data-availability-cta class="mt-1 hidden text-xs font-semibold text-navy-dark underline underline-offset-4">{{ $ctaLabel }}</a>
     @endif
 </div>

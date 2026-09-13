@@ -5,7 +5,7 @@
 @section('content')
     <section class="bg-onyx pb-16 pt-36 text-background">
         <div class="mx-auto max-w-container px-5 md:px-8">
-            <p class="eyebrow text-gold">Legal</p>
+            <p class="eyebrow text-navy">Legal</p>
             <h1 class="mt-4 font-display text-5xl font-medium tracking-tight md:text-6xl">Terms of Service</h1>
             <p class="mt-5 max-w-2xl text-base font-light leading-relaxed text-background/70">
                 Terakhir diperbarui: {{ date('d M Y') }}. Dengan memesan di {{ $site['long_name'] }}, Anda menyetujui ketentuan berikut.
@@ -14,7 +14,7 @@
     </section>
 
     <section class="mx-auto max-w-container px-5 py-16 md:px-8 md:py-20">
-        <div class="max-w-3xl space-y-8 text-sm leading-relaxed text-stone">
+        <div class="max-w-3xl space-y-8 text-sm leading-relaxed text-muted-text">
             <div>
                 <h2 class="font-display text-2xl font-medium text-ink">1. Reservasi & pembayaran</h2>
                 <p class="mt-3">Reservasi terkunci setelah pembayaran terkonfirmasi melalui Midtrans dan e-voucher diterbitkan. Pesanan yang belum dibayar hangus otomatis setelah 24 jam tanpa biaya.</p>

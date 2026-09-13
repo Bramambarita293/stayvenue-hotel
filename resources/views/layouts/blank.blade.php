@@ -10,7 +10,7 @@
     @stack('head')
 </head>
 
-<body class="min-h-screen bg-background font-body text-ink antialiased selection:bg-gold/20">
+<body class="min-h-screen bg-background font-body text-ink antialiased selection:bg-navy/20">
     @yield('content')
     @stack('scripts')
 </body>
